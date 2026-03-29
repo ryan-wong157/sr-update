@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "flash_layout.h"
+#include "bl_jump.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,9 +74,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  // RELOCATE THE VECTOR TABLE
-  SCB->VTOR = APP_START_ADDR;
-  __enable_irq();
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -89,15 +87,23 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+  // Blink led twice before jumping
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+  HAL_Delay(500);
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+  HAL_Delay(500);
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+  HAL_Delay(500);
+  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+  HAL_Delay(500);
 
+  jump_to_app();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-    HAL_Delay(2000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

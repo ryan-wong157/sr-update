@@ -1,0 +1,8 @@
+#ifndef FLASH_LAYOUT_H
+#define FLASH_LAYOUT_H
+
+#define BL_START_ADDR 0x08000000 // 16kB
+#define APP_HEADER_ADDR 0x08004000 // 2kB
+#define APP_START_ADDR 0x08004800 // 110kB
+
+#endif
