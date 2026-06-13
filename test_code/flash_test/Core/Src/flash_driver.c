@@ -1,5 +1,6 @@
 // Flash driver functions for stm32G431CB
-// very basic for now, no return status or anything, but does error handling
+// Written by Ryan Wong
+
 #include "flash_driver.h"
 
 sr_flash_status_t write_flash_64(uint32_t address, uint64_t data) {
@@ -35,11 +36,13 @@ sr_flash_status_t write_flash_64(uint32_t address, uint64_t data) {
     return SR_FLASH_OK;
 }
 
-
-// TODO: VERIFY BANK AND START PAGE AND NUM PAGE
 sr_flash_status_t erase_flash_page(uint32_t bank, uint32_t start_page, uint32_t num_pages) {
-    // bank should always FLASH_BANK_1 for now
+    if (bank != FLASH_BANK_1 || start_page < 0 || start_page > NUM_FLASH_PAGES - 1 || num_pages > (NUM_FLASH_PAGES - start_page + 1)) {
+        return SR_FLASH_INVALID_INPUT;
+    }
+
     HAL_StatusTypeDef retval;
+    // 0xFFFF FFFF on success, offending page num on erase fail 
     uint32_t page_error;
     FLASH_EraseInitTypeDef erase_struct;
 
@@ -56,7 +59,7 @@ sr_flash_status_t erase_flash_page(uint32_t bank, uint32_t start_page, uint32_t 
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
 
     retval = HAL_FLASHEx_Erase(&erase_struct, &page_error);
-    if (retval != HAL_OK) {
+    if (retval != HAL_OK || page_error != 0xFFFFFFFF) {
         HAL_FLASH_Lock();
         return SR_FLASH_ERASE_ERR;
     }

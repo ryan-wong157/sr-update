@@ -1,6 +1,8 @@
 #ifndef FLASH_CONFIG_H
 #define FLASH_CONFIG_H
 
+// flash constants for STM32G431CB
+
 #define NUM_FLASH_BANKS 1U
 #define NUM_FLASH_PAGES 64U
 #define FLASH_PAGE_SIZE_BYTES 2048U

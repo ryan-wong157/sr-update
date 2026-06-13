@@ -31,9 +31,9 @@ sr_flash_status_t write_flash_64(uint32_t address, uint64_t data);
  * num pages + start page must not exceed max pages
  * bank must be either FLASH_BANK_1, or FLASH_BANK_2, not both
  * 
- * @param bank 
- * @param start_page 
- * @param num_pages 
+ * @param bank - flash bank number: FLASH_BANK_1, or FLASH_BANK_2
+ * @param start_page - page to start erasing from (inclusive, 0 indexed)
+ * @param num_pages - number of pages to erase from start page
  * @return sr_flash_status_t 
  */
 sr_flash_status_t erase_flash_page(uint32_t bank, uint32_t start_page, uint32_t num_pages);
