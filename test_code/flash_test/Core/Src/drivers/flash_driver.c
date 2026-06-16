@@ -1,9 +1,9 @@
 // Flash driver functions for stm32G431CB
 // Written by Ryan Wong
 
-#include "flash_driver.h"
+#include "drivers/flash_driver.h"
 
-sr_flash_status_t write_flash_64(uint32_t address, uint64_t data) {
+sr_flash_status_t sr_flash_write64(uint32_t address, uint64_t data) {
     HAL_StatusTypeDef retval;
     
     retval = HAL_FLASH_Unlock();
@@ -36,7 +36,7 @@ sr_flash_status_t write_flash_64(uint32_t address, uint64_t data) {
     return SR_FLASH_OK;
 }
 
-sr_flash_status_t erase_flash_page(uint32_t bank, uint32_t start_page, uint32_t num_pages) {
+sr_flash_status_t sr_flash_erase_page(uint32_t bank, uint32_t start_page, uint32_t num_pages) {
     if (bank != FLASH_BANK_1 || start_page < 0 || start_page > NUM_FLASH_PAGES - 1 || num_pages > (NUM_FLASH_PAGES - start_page + 1)) {
         return SR_FLASH_INVALID_INPUT;
     }

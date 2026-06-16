@@ -22,7 +22,7 @@
  *         SR_FLASH_WRITE_ERR if programming fails
  *         SR_FLASH_READBACK_ERR if verification fails
  */
-sr_flash_status_t write_flash_64(uint32_t address, uint64_t data);
+sr_flash_status_t sr_flash_write64(uint32_t address, uint64_t data);
 
 /**
  * @brief Erases one or more pages of flash memory from specificed bank
@@ -36,5 +36,6 @@ sr_flash_status_t write_flash_64(uint32_t address, uint64_t data);
  * @param num_pages - number of pages to erase from start page
  * @return sr_flash_status_t 
  */
-sr_flash_status_t erase_flash_page(uint32_t bank, uint32_t start_page, uint32_t num_pages);
+sr_flash_status_t sr_flash_erase_page(uint32_t bank, uint32_t start_page, uint32_t num_pages);
+
 #endif
