@@ -152,9 +152,20 @@ int main(void)
             sr_fdcan_tx(&hfdcan1, SAD_RESPONSE_ID, (uint8_t*)data, FDCAN_DLC_BYTES_5);
             sad_msg.new_data = 0;
         } else if (odd_msg.new_data) {
-            snprintf(data, sizeof(data), "Hello!");
-            sr_fdcan_tx(&hfdcan1, FUNNY_RESPONSE_ID, (uint8_t*)data, FDCAN_DLC_BYTES_6);
+            snprintf(data, sizeof(data), "WRITING");
+            sr_fdcan_tx(&hfdcan1, FUNNY_RESPONSE_ID, (uint8_t*)data, FDCAN_DLC_BYTES_8);
             odd_msg.new_data = 0;
+
+            uint32_t write_addr = 0x0801F800;
+            sr_flash_erase_page(FLASH_BANK_1, 63, 1);
+            uint64_t val;
+            memcpy(&val, odd_msg.data, 8);
+            sr_flash_write64(write_addr, val);
+            if (*(volatile uint64_t*)write_addr == val) {
+                snprintf(data, sizeof(data), "SUCCESS");
+                sr_fdcan_tx(&hfdcan1, FUNNY_RESPONSE_ID, (uint8_t*)data, FDCAN_DLC_BYTES_8);
+            }
+
         }
         // Do nothing
     }

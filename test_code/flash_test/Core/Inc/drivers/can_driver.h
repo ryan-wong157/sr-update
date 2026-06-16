@@ -43,7 +43,7 @@ typedef struct {
  * 
  * @param config_struct - Struct as defined above
  */
-void sr_fdcan_config(const FDCAN_HandleTypeDef* hfdcan, const sr_fdcan_config_t* config_struct);
+void sr_fdcan_config(FDCAN_HandleTypeDef* hfdcan, sr_fdcan_config_t* config_struct);
 
 /**
  * @brief Adds a filter element 

@@ -8,7 +8,7 @@ static uint32_t tx_brs;
 static uint32_t tx_frame_format;
 static uint32_t tx_event_fifo_control;
 
-void sr_fdcan_config(const FDCAN_HandleTypeDef* hfdcan, const sr_fdcan_config_t* config_struct) {
+void sr_fdcan_config(FDCAN_HandleTypeDef* hfdcan, sr_fdcan_config_t* config_struct) {
     HAL_StatusTypeDef retval;
     retval = HAL_FDCAN_ConfigGlobalFilter(hfdcan, FDCAN_REJECT, FDCAN_REJECT, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE);
 
@@ -37,7 +37,7 @@ void sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type, uint
             .FilterID1=id1,
             .FilterID2=id2
         };
-        HAL_FDCAN_ConfigFilter(&hfdcan, &filter);
+        HAL_FDCAN_ConfigFilter(hfdcan, &filter);
         filter_index++;
     }
     else {
