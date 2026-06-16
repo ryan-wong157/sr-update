@@ -28,7 +28,6 @@ CAN Rx (meant to be called in the interrupt handler)
 */
 
 typedef struct {
-    FDCAN_HandleTypeDef* hfdcan;
     uint32_t fifo_overwrite;
     uint32_t tx_id_type;
     uint32_t tx_brs;
@@ -44,14 +43,7 @@ typedef struct {
  * 
  * @param config_struct - Struct as defined above
  */
-void sr_fdcan_config(const sr_fdcan_config_t* config_struct);
-
-/**
- * @brief Starts the FD CAN peripheral, made for neatness and extensibility..
- * 
- * @param hfdcan - FD CAN peripheral handle
- */
-void sr_fdcan_start(FDCAN_HandleTypeDef* hfdcan);
+void sr_fdcan_config(const FDCAN_HandleTypeDef* hfdcan, const sr_fdcan_config_t* config_struct);
 
 /**
  * @brief Adds a filter element 
@@ -76,8 +68,5 @@ void sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type, uint
  * @param length 
  */
 void sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length);
-
-
-void sr_fdcan_rx();
 
 #endif
