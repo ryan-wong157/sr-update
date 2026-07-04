@@ -1,0 +1,23 @@
+#ifndef ERRNO_H
+#define ERRNO_H
+
+typedef enum {
+    SR_OK = 0,
+    // flash errors
+    SR_FLASH_UNLOCK_ERR,
+    SR_FLASH_LOCK_ERR,
+    SR_FLASH_WRITE_ERR,
+    SR_FLASH_READBACK_ERR,
+    SR_FLASH_ERASE_ERR,
+    SR_FLASH_INVALID_INPUT,
+
+    // fd-can errors
+    SR_FDCAN_CFG_GLOBAL_FILTER_ERR,
+    SR_FDCAN_CFG_FILTER_ERR,
+    SR_FDCAN_CFG_FIFO_OVERWRITE_ERR,
+    SR_FDCAN_ACTIVATE_NOTIF_ERR,
+    SR_FDCAN_TX_ERR
+
+} sr_errno_t;
+
+#endif
