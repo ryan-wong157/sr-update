@@ -128,14 +128,21 @@ int main(void)
   sr_fdcan_filter_add(&hfdcan1, FDCAN_FILTER_RANGE, FDCAN_FILTER_TO_RXFIFO0, 0x05, 0x0A);
   sr_fdcan_filter_add(&hfdcan1, FDCAN_FILTER_DUAL, FDCAN_FILTER_TO_RXFIFO0, 0x99, 0x100);
 
-  HAL_FDCAN_Start(&hfdcan1);
+  if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+    for(int i = 0; i < 5; i++) {
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+        HAL_Delay(1000);
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+        HAL_Delay(1000);
+    }
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
     while (1) {
     /* USER CODE END WHILE */
-    
+
     /* USER CODE BEGIN 3 */
         char data[8];
         // Check if new data in any of the rx message structs
@@ -214,6 +221,7 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_FDCAN_RxFifo0Callback (FDCAN_HandleTypeDef * hfdcan, uint32_t RxFifo0ITs) {
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
     if (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) {
         FDCAN_RxHeaderTypeDef head;
         uint8_t data[8];

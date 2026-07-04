@@ -37,7 +37,15 @@ void sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type, uint
             .FilterID1=id1,
             .FilterID2=id2
         };
-        HAL_FDCAN_ConfigFilter(hfdcan, &filter);
+        if (HAL_FDCAN_ConfigFilter(hfdcan, &filter) != HAL_OK) {
+            for (int i = 0; i < 10; i++) {
+                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+                HAL_Delay(500);
+                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+                HAL_Delay(500);
+
+            }
+        }
         filter_index++;
     }
     else {
@@ -46,7 +54,7 @@ void sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type, uint
 }
 
 void sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length) {
-    if (length > 8) {
+    if (length > FDCAN_DLC_BYTES_8) {
         return;
     }
 
