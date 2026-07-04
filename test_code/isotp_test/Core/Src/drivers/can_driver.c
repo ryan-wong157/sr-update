@@ -37,6 +37,7 @@ sr_errno_t sr_fdcan_config(FDCAN_HandleTypeDef* hfdcan, sr_fdcan_config_t* confi
     tx_brs = config_struct->tx_brs;
     tx_frame_format = config_struct->tx_frame_format;
     tx_event_fifo_control = config_struct->tx_event_fifo_control;
+    return SR_OK;
 }
 
 sr_errno_t sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type, uint32_t filter_config, uint32_t id1, uint32_t id2) {
@@ -58,20 +59,19 @@ sr_errno_t sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type
                 HAL_Delay(500);
                 HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
                 HAL_Delay(500);
-
             }
             return SR_FDCAN_CFG_FILTER_ERR;
         }
         filter_index++;
-    }
-    else {
-        return 0;
+        return SR_OK;
+    } else {
+        return SR_FDCAN_OVER_MAX_FILTERS;
     }
 }
 
 sr_errno_t sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length) {
     if (length > FDCAN_DLC_BYTES_8) {
-        return;
+        return SR_FDCAN_TX_MSG_TOO_BIG;
     }
 
     FDCAN_TxHeaderTypeDef header = {
@@ -89,5 +89,5 @@ sr_errno_t sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* da
     if (HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &header, data) != HAL_OK) {
         return SR_FDCAN_TX_ERR;
     }
-    return 0;
+    return SR_OK;
 }
