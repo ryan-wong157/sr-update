@@ -3,7 +3,7 @@
 
 #include "main.h"
 
-void dwt_init();
-uint32_t micros();
+// sets up data watchpoint and trace to begin cycle counting
+void sr_dwt_init();
 
 #endif
