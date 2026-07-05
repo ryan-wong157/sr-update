@@ -91,3 +91,16 @@ sr_errno_t sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* da
     }
     return SR_OK;
 }
+
+sr_errno_t sr_fdcan_tx_blocking(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length) {
+    sr_errno_t retval = sr_fdcan_tx(hfdcan, can_id, data, length);
+    if (retval != SR_OK) {
+        return retval;
+    }
+    // FIFO holds 3 messages max
+    while (HAL_FDCAN_GetTxFifoFreeLevel(hfdcan) < 3) {
+        // do nothing
+    }
+
+    return SR_OK;
+}

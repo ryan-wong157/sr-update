@@ -42,12 +42,23 @@ sr_errno_t sr_fdcan_filter_add(FDCAN_HandleTypeDef* hfdcan, uint32_t filter_type
 /**
  * @brief 
  * 
- * @param hfdcan 
- * @param can_id
- * @param data 
- * @param length 
+ * @param hfdcan can periph handle
+ * @param can_id id of can message
+ * @param data pointer to byte array of data
+ * @param length length of byte array
  * @return uint32_t - error code defined in errno.h
  */
 sr_errno_t sr_fdcan_tx(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length);
+
+/**
+ * @brief Exact same as above but blocks until confirmed message has been sent
+ * 
+ * @param hfdcan 
+ * @param can_id 
+ * @param data 
+ * @param length 
+ * @return sr_errno_t - error code defined in errno.h
+ */
+sr_errno_t sr_fdcan_tx_blocking(FDCAN_HandleTypeDef* hfdcan, uint32_t can_id, uint8_t* data, uint32_t length);
 
 #endif
