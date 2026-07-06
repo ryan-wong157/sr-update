@@ -97,6 +97,11 @@ typedef struct {
 	void (*callback_error_unexpected_frame_type) (void* context, const uint8_t* msg_data, const size_t msg_length);
 
 	/**
+	 * @brief (required) Callback which happens if entire transmit is done
+	 */
+	void (*callback_entire_tx_done) (void* context);
+
+	/**
 	 * @brief (optional) Callback run when the first frame of a new transmission is recieved. Used by UDS to `isotp_session_send` a denial if not authorized/allowed before recieving the entire message.
 	 * 
 	 */
