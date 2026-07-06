@@ -10,3 +10,7 @@ void sr_dwt_init() {
 	DWT->CYCCNT = 0;
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
+
+uint32_t sr_cyccnt() {
+    return DWT->CYCCNT;
+}
