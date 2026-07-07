@@ -49,17 +49,23 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
     }
     // For tx timing requirements. Store in number of clock cycles, not time
     uint32_t cycles_per_us = SystemCoreClock / 1000000U;
-    uint32_t req_separation_cycl = 0;
+    uint32_t req_separation_cycls = 0;
     uint32_t last_send_cycl = 0;
+    uint32_t timeout_start_cycl = sr_cyccnt();
+    uint32_t timeout_cycls = ISOTP_TIMEOUT_MS * 1000U * cycles_per_us;
     tx_done_flag = 0;
+
     while (!tx_done_flag) {
         if (last_err != SR_OK) {
-            sr_errno_t bruh = last_err;
+            sr_errno_t retval = last_err;
             last_err = SR_OK;
-            return bruh;
+            return retval;
         }
-        if (sr_cyccnt() - last_send_cycl >= req_separation_cycl) {
-            // start sending, wait for response, update timestamp
+        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+            isotp_session_idle(&isotp_session);
+            return SR_ISOTP_TIMEOUT;
+        }
+        if (sr_cyccnt() - last_send_cycl >= req_separation_cycls) {
             // TEMP: 8 BYTES MAX FOR NOW
             uint8_t send_buf[8];
             uint32_t req_separation_us;
@@ -70,7 +76,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
                     // error!!! do something
                 }
                 last_send_cycl = sr_cyccnt();
-                req_separation_cycl = req_separation_us * cycles_per_us; // try to avoid fp math
+                timeout_start_cycl = last_send_cycl;
+                req_separation_cycls = req_separation_us * cycles_per_us;
             }
         }
         // separation time not met, keep trying
@@ -84,13 +91,26 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
 // this means any asychronous full messgae which was received BEFORE we call sr_isotp_rx will not be
 // overwritten, and be waiting there for us to claim
 sr_errno_t sr_isotp_rx(uint8_t* rx_buff, size_t length, uint32_t* recv_length) {
+    uint32_t cycles_per_us = SystemCoreClock / 1000000U;
+    uint32_t timeout_start_cycl = sr_cyccnt();
+    uint32_t timeout_cycls = ISOTP_TIMEOUT_MS * 1000U * cycles_per_us;
     while (!rx_done_flag) {
+        if (last_err != SR_OK) {
+            sr_errno_t retval = last_err;
+            last_err = SR_OK;
+            return retval;
+        }
+        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+            isotp_session_idle(&isotp_session);
+            return SR_ISOTP_TIMEOUT;
+        }
         // respond with any FC frames if there's any
         // TEMP: 8 BYTES MAX FOR NOW
         uint8_t frame[8];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
         if (n > 0) {
             sr_fdcan_tx_blocking(fdcan_handle, ISOTP_TX_ID, frame, n);
+            timeout_start_cycl = sr_cyccnt();
         }
     }
 
