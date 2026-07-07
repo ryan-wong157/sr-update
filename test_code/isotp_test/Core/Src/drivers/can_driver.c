@@ -50,12 +50,6 @@ sr_errno_t sr_fdcan_filter_add(sr_fdcan_handle_t* handle, uint32_t filter_type, 
             .FilterID2=id2
         };
         if (HAL_FDCAN_ConfigFilter(handle->hfdcan, &filter) != HAL_OK) {
-            for (int i = 0; i < 10; i++) {
-                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-                HAL_Delay(500);
-                HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-                HAL_Delay(500);
-            }
             return SR_FDCAN_CFG_FILTER_ERR;
         }
         handle->filter_index++;
@@ -66,7 +60,8 @@ sr_errno_t sr_fdcan_filter_add(sr_fdcan_handle_t* handle, uint32_t filter_type, 
 }
 
 sr_errno_t sr_fdcan_tx(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data, uint32_t length) {
-    if (length > FDCAN_DLC_BYTES_8) {
+    uint32_t dlc = sr_fdcan_bytes_to_dlc(length);
+    if (dlc == UINT32_MAX || (handle->tx_frame_format == FDCAN_CLASSIC_CAN && dlc > FDCAN_DLC_BYTES_8)) {
         return SR_FDCAN_TX_MSG_TOO_BIG;
     }
 
@@ -74,7 +69,7 @@ sr_errno_t sr_fdcan_tx(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data
         .Identifier=can_id,
         .IdType=handle->tx_id_type,
         .TxFrameType=FDCAN_DATA_FRAME,
-        .DataLength=length,
+        .DataLength=dlc,
         .ErrorStateIndicator=FDCAN_ESI_ACTIVE,
         .BitRateSwitch=handle->tx_brs,
         .FDFormat=handle->tx_frame_format,
@@ -99,4 +94,27 @@ sr_errno_t sr_fdcan_tx_blocking(sr_fdcan_handle_t* handle, uint32_t can_id, uint
     }
 
     return SR_OK;
+}
+
+static const uint32_t dlc_to_bytes_table[] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64
+};
+
+uint32_t sr_fdcan_dlc_to_bytes(uint32_t dlc) {
+    if (dlc >= sizeof(dlc_to_bytes_table) / sizeof(dlc_to_bytes_table[0])) {
+        return 0;
+    }
+    return dlc_to_bytes_table[dlc];
+}
+
+uint32_t sr_fdcan_bytes_to_dlc(uint32_t length) {
+    if (length > 64) {
+        return UINT32_MAX;
+    }
+    for (uint32_t dlc = 0; dlc < sizeof(dlc_to_bytes_table) / sizeof(dlc_to_bytes_table[0]); dlc++) {
+        if (dlc_to_bytes_table[dlc] >= length) {
+            return dlc;
+        }
+    }
+    return UINT32_MAX;
 }

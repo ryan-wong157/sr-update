@@ -83,4 +83,23 @@ sr_errno_t sr_fdcan_tx(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data
  */
 sr_errno_t sr_fdcan_tx_blocking(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data, uint32_t length);
 
+/**
+ * @brief Converts a HAL FDCAN_DLC_BYTES_x code (as read from FDCAN_RxHeaderTypeDef.DataLength)
+ * into the actual number of data bytes. Only 0-8 map 1:1. 
+ * sFD DLC codes 9-15 map to 12,16,20,24,32,48,64.
+ *
+ * @param dlc - one of the FDCAN_DLC_BYTES_x values
+ * @return uint32_t - number of data bytes, or 0 if dlc is not a valid code
+ */
+uint32_t sr_fdcan_dlc_to_bytes(uint32_t dlc);
+
+/**
+ * @brief Converts a byte count into the smallest HAL FDCAN_DLC_BYTES_x code that can hold it.
+ * For FD lengths that fall between valid steps (e.g. 9-11), rounds up to the next valid code (12).
+ *
+ * @param length - number of data bytes (0-64)
+ * @return uint32_t - FDCAN_DLC_BYTES_x code, or UINT32_MAX if length > 64
+ */
+uint32_t sr_fdcan_bytes_to_dlc(uint32_t length);
+
 #endif
