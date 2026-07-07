@@ -2,8 +2,8 @@
 #define FLASH_DRIVER_H
 
 #include "main.h"
-#include "errno.h"
-#include "flash_config.h"
+#include "drivers/errno.h"
+#include "drivers/flash_config.h"
 #include <stdint.h>
 
 /**
