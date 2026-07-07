@@ -19,6 +19,7 @@ typedef enum {
     SR_FDCAN_ACTIVATE_NOTIF_ERR,
     SR_FDCAN_TX_MSG_TOO_BIG,
     SR_FDCAN_TX_ERR,
+    SR_FDCAN_TIMEOUT,
 
     // isotp errors
     SR_ISOTP_TX_LEN_ERR,

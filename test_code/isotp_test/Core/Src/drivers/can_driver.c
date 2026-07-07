@@ -2,6 +2,8 @@
 // Written by Ryan Wong
 
 #include "drivers/can_driver.h"
+#include "drivers/dwt.h"
+#include "config/can_config.h"
 
 sr_errno_t sr_fdcan_config(sr_fdcan_handle_t* handle, FDCAN_HandleTypeDef* hfdcan, sr_fdcan_config_t* config_struct) {
     HAL_StatusTypeDef retval;
@@ -84,6 +86,9 @@ sr_errno_t sr_fdcan_tx(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data
 }
 
 sr_errno_t sr_fdcan_tx_blocking(sr_fdcan_handle_t* handle, uint32_t can_id, uint8_t* data, uint32_t length) {
+    uint32_t cycles_per_us = SystemCoreClock / 1000000U;
+    uint32_t timeout_start_cycl = sr_cyccnt();
+    uint32_t timeout_cycls = FDCAN_TIMEOUT_MS * 1000 * cycles_per_us;
     sr_errno_t retval = sr_fdcan_tx(handle, can_id, data, length);
     if (retval != SR_OK) {
         return retval;
@@ -91,6 +96,9 @@ sr_errno_t sr_fdcan_tx_blocking(sr_fdcan_handle_t* handle, uint32_t can_id, uint
     // FIFO holds 3 messages max
     while (HAL_FDCAN_GetTxFifoFreeLevel(handle->hfdcan) < 3) {
         // do nothing
+        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+            return SR_FDCAN_TIMEOUT;
+        }
     }
 
     return SR_OK;

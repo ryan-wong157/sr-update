@@ -1,8 +1,8 @@
 #include <string.h>
 #include "drivers/isotp.h"
 #include "drivers/dwt.h"
-#include "drivers/errno.h"
-#include "drivers/can_config.h"
+#include "config/errno.h"
+#include "config/can_config.h"
 
 // TEMP: SUPPORT 1 SESSION and 1 can peripheral. (probably no need at all to support more than 1)
 static isotp_session_t isotp_session;

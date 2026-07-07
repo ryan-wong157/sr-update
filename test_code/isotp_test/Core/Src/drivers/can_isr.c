@@ -1,6 +1,6 @@
 #include "drivers/isotp.h"
 #include "drivers/can_driver.h"
-#include "drivers/can_config.h"
+#include "config/can_config.h"
 
 void HAL_FDCAN_RxFifo0Callback (FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs) {
     if (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) {
