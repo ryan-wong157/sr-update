@@ -1,5 +1,5 @@
+#include <string.h>
 #include "drivers/isotp.h"
-#include "drivers/can_driver.h"
 #include "drivers/dwt.h"
 #include "drivers/errno.h"
 #include "drivers/can_config.h"
@@ -80,27 +80,12 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
     return SR_OK;
 }
 
+// Note: rx_done_flag being set STOPS the CAN ISR from touching the receive buffer. 
+// this means any asychronous full messgae which was received BEFORE we call sr_isotp_rx will not be
+// overwritten, and be waiting there for us to claim
 sr_errno_t sr_isotp_rx(uint8_t* rx_buff, size_t length, uint32_t* recv_length) {
-    // in case any stale transmission which could be half-overwritten already
-    rx_done_flag = 0;
-    while (1) {
-        // critical section cuz the receive buffer should not be overwritten while reading from it 
-        HAL_NVIC_DisableIRQ(FDCAN1_IT0_IRQn);
-        if (rx_done_flag) {
-            if (isotp_session.full_transmission_length > length) {
-                rx_done_flag = 0;
-                HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
-                return SR_ISOTP_RX_BUFF_TOO_SMALL;
-            }
-            memcpy(rx_buff, isotp_session.rx_buffer, isotp_session.full_transmission_length);
-            *recv_length = isotp_session.full_transmission_length;
-            rx_done_flag = 0;
-            HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
-            break;
-        }
-        HAL_NVIC_EnableIRQ(FDCAN1_IT0_IRQn);
-
-        // Do flow control response if needed
+    while (!rx_done_flag) {
+        // respond with any FC frames if there's any
         // TEMP: 8 BYTES MAX FOR NOW
         uint8_t frame[8];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
@@ -108,6 +93,15 @@ sr_errno_t sr_isotp_rx(uint8_t* rx_buff, size_t length, uint32_t* recv_length) {
             sr_fdcan_tx_blocking(fdcan_handle, ISOTP_TX_ID, frame, n);
         }
     }
+
+    // done receiving
+    if (isotp_session.full_transmission_length > length) {
+        rx_done_flag = 0;
+        return SR_ISOTP_RX_BUFF_TOO_SMALL;
+    }
+    memcpy(rx_buff, isotp_session.rx_buffer, isotp_session.full_transmission_length);
+    *recv_length = isotp_session.full_transmission_length;
+    rx_done_flag = 0;
     isotp_session_idle(&isotp_session);
     return SR_OK;
 }
@@ -148,4 +142,14 @@ static void err_consecutive_out_of_order_callback(void* context, const uint8_t* 
 static void err_unexpected_frame_type_callback(void* context, const uint8_t* msg_data, const size_t msg_length) {
     isotp_session_idle((isotp_session_t*)context);
     last_err = SR_ISOTP_UNEXPECTED_FRAME_TYPE;
+}
+
+// =================================================================================================
+// 
+// =================================================================================================
+void sr_isotp_can_isr_callback(uint8_t* data, size_t length) {
+    if (!rx_done_flag) {
+        isotp_session_can_rx(&isotp_session, data, length);
+    }   
+    // don't touch buffer if rx not done
 }
