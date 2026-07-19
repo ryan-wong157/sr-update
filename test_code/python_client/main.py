@@ -46,12 +46,14 @@ def main():
             print("Received:", response)
 
             # Device always replies with this fixed 15-byte payload (see main.c)
-            if response == b"brochachowacho":
+            if response == b"brochachowacho\x00":
                 print("Received expected response!")
             else:
                 print("Unexpected response.")
 
             break
+
+    bus.shutdown()
 
 
 if __name__ == "__main__":

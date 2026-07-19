@@ -127,6 +127,15 @@ int main(void)
         }
         return 1;
     }
+    if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
+        for(int i = 0; i < 5; i++) {
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+            HAL_Delay(1000);
+            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+            HAL_Delay(1000);
+        }
+        return 1;
+    }
     sr_isotp_init(&fd_handle1, ISOTP_FORMAT_NORMAL);
   /* USER CODE END 2 */
 
@@ -141,12 +150,8 @@ int main(void)
     /* USER CODE BEGIN 3 */
     // ===================== START SERVER
     retval = sr_isotp_rx(rx_buffer, 2048, &bytes_received);
-    if (bytes_received != 20 || retval != SR_OK) {
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-        HAL_Delay(1000);
-        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-        HAL_Delay(1000);
-    } else {
+
+    if (retval == SR_OK) {
         char msg_recv[20];
         memcpy(msg_recv, rx_buffer, 20);
         char msg_send[15] = "brochachowacho";
@@ -158,7 +163,7 @@ int main(void)
             HAL_Delay(1000); 
         }
     }
-  }
+}
   /* USER CODE END 3 */
 }
 
