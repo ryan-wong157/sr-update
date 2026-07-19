@@ -3,7 +3,8 @@
 #include "drivers/can_driver.h"
 
 /**
- * @brief Saves a pointer to the can handle, creates and inits isotp session, registers all callbacks
+ * @brief Saves a pointer to the can handle, creates and inits isotp session, registers all callbacks.
+ * Need to init srfdcan handle first!
  * 
  * @param handle - fdcan handle
  * @param frame_format - either ISOTP_FORMAT_NORMAL/FD 

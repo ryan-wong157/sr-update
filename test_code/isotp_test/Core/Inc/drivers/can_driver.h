@@ -7,6 +7,10 @@
 // =================================================================================================
 // Structs
 // =================================================================================================
+/**
+ * @brief config struc to pass to sr+fdcan_config. each value is a #define found in stm32g4xx_hal_fdcan.h
+ * 
+ */
 typedef struct {
     uint32_t fifo_overwrite;
     uint32_t tx_id_type;
