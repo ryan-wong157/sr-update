@@ -102,6 +102,13 @@ typedef struct {
 	void (*callback_entire_tx_done) (void* context);
 
 	/**
+	 * @brief (optional) Callback run when an in-progress transmit (TRANSMITTING or TRANSMITTING_AWAITING_FC)
+	 * is abandoned because a new Single/First frame was recieved, interrupting it to satisfy the new request.
+	 *
+	 */
+	void (*callback_error_tx_interrupted_by_rx) (void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
+
+	/**
 	 * @brief (optional) Callback run when the first frame of a new transmission is recieved. Used by UDS to `isotp_session_send` a denial if not authorized/allowed before recieving the entire message.
 	 * 
 	 */

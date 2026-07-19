@@ -23,6 +23,7 @@ static void err_partner_aborted_transfer_callback(void* context, const uint8_t* 
 static void err_transmission_too_large_callback(void* context, const uint8_t* data, const size_t length, const size_t requested_size);
 static void err_consecutive_out_of_order_callback(void* context, const uint8_t* data, const size_t length, const uint8_t expected_index, const uint8_t received_index);
 static void err_unexpected_frame_type_callback(void* context, const uint8_t* msg_data, const size_t msg_length);
+static void err_tx_interrupted_by_rx_callback(void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length);
 
 // =================================================================================================
 // PUBLIC INTERFACE FUNCS
@@ -39,9 +40,10 @@ void sr_isotp_init(sr_fdcan_handle_t* handle, isotp_format_t frame_format) {
     isotp_session.callback_error_transmission_too_large = err_transmission_too_large_callback;
     isotp_session.callback_error_consecutive_out_of_order = err_consecutive_out_of_order_callback;
     isotp_session.callback_error_unexpected_frame_type = err_unexpected_frame_type_callback;
+    isotp_session.callback_error_tx_interrupted_by_rx = err_tx_interrupted_by_rx_callback;
 }
 
-sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {    
+sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
     size_t bytes_sent = isotp_session_send(&isotp_session, tx_data, length);
     if (bytes_sent != length) {
         isotp_session_idle(&isotp_session);
@@ -73,7 +75,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
             if (single_len > 0) {
                 sr_errno_t retval = sr_fdcan_tx_blocking(fdcan_handle, ISOTP_TX_ID, send_buf, single_len);
                 if (retval != SR_OK) {
-                    // error!!! do something
+                    isotp_session_idle(&isotp_session);
+                    return retval;
                 }
                 last_send_cycl = sr_cyccnt();
                 timeout_start_cycl = last_send_cycl;
@@ -87,9 +90,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
     return SR_OK;
 }
 
-// Note: rx_done_flag being set STOPS the CAN ISR from touching the receive buffer. 
-// this means any asychronous full messgae which was received BEFORE we call sr_isotp_rx will not be
-// overwritten, and be waiting there for us to claim
+// Note: rx_done_flag being set STOPS the CAN ISR from touching the receive buffer.
+// This means a single frame msg will be waiting to be claimed, but multi-frame will timeout on client side
 sr_errno_t sr_isotp_rx(uint8_t* rx_buff, size_t length, uint32_t* recv_length) {
     uint32_t cycles_per_us = SystemCoreClock / 1000000U;
     uint32_t timeout_start_cycl = sr_cyccnt();
@@ -109,7 +111,11 @@ sr_errno_t sr_isotp_rx(uint8_t* rx_buff, size_t length, uint32_t* recv_length) {
         uint8_t frame[8];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
         if (n > 0) {
-            sr_fdcan_tx_blocking(fdcan_handle, ISOTP_TX_ID, frame, n);
+            sr_errno_t retval = sr_fdcan_tx_blocking(fdcan_handle, ISOTP_TX_ID, frame, n);
+            if (retval != SR_OK) {
+                isotp_session_idle(&isotp_session);
+                return retval;
+            }
             timeout_start_cycl = sr_cyccnt();
         }
     }
@@ -162,6 +168,11 @@ static void err_consecutive_out_of_order_callback(void* context, const uint8_t* 
 static void err_unexpected_frame_type_callback(void* context, const uint8_t* msg_data, const size_t msg_length) {
     isotp_session_idle((isotp_session_t*)context);
     last_err = SR_ISOTP_UNEXPECTED_FRAME_TYPE;
+}
+
+static void err_tx_interrupted_by_rx_callback(void* context, const isotp_spec_frame_type_t rx_frame_type, const uint8_t* msg_data, const size_t msg_length) {
+    isotp_session_idle((isotp_session_t*)context);
+    last_err = SR_ISOTP_TX_INTERRUPTED_BY_RX;
 }
 
 // =================================================================================================

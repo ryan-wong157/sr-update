@@ -345,8 +345,8 @@ void handle_flow_control_frame(isotp_session_t* session, const uint8_t* frame_da
             //  Abort transmission
             if(session->callback_error_partner_aborted_transfer != NULL) { session->callback_error_partner_aborted_transfer(session, frame_data, frame_length); }
             else { isotp_session_idle(session); }
-            
-            break;
+
+            return;
         default:
             //  Invalid FC flags
             if(session->callback_error_invalid_frame != NULL) { session->callback_error_invalid_frame(session, (isotp_spec_frame_type_t)0xFF, frame_data, frame_length); }
@@ -404,11 +404,13 @@ void rx_transmitting(const isotp_spec_frame_type_t frame_type, isotp_session_t* 
     switch(frame_type) {
         case ISOTP_SPEC_FRAME_SINGLE:
             //  Single frame received, abandon current transmission to satisfy new request
+            if(session->callback_error_tx_interrupted_by_rx != NULL) { session->callback_error_tx_interrupted_by_rx(session, frame_type, frame_data, frame_length); }
             isotp_session_idle(session);
             handle_single_frame(session, frame_data, frame_length);
             break;
         case ISOTP_SPEC_FRAME_FIRST:
             //  First frame received, abandon current transmission to satisfy new request
+            if(session->callback_error_tx_interrupted_by_rx != NULL) { session->callback_error_tx_interrupted_by_rx(session, frame_type, frame_data, frame_length); }
             isotp_session_idle(session);
             handle_first_frame(session, frame_data, frame_length);
             break;
@@ -678,7 +680,7 @@ size_t tx_transmitting(isotp_session_t* session, uint8_t* frame_data, const size
     //  Check if done
     if(session->buffer_offset >= session->full_transmission_length) {
         //  Done
-        session->callback_entire_tx_done(&session);
+        session->callback_entire_tx_done(session);
         isotp_session_idle(session);
     }
 
@@ -889,6 +891,7 @@ void isotp_session_init(isotp_session_t* session, const isotp_format_t frame_for
     session->callback_error_partner_aborted_transfer = NULL;
     session->callback_error_unexpected_frame_type = NULL;
     session->callback_error_consecutive_out_of_order = NULL;
+    session->callback_error_tx_interrupted_by_rx = NULL;
 
     //  Reset session state
     isotp_session_idle(session);
