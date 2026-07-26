@@ -23,11 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <string.h>
-#include "drivers/can_driver.h"
-#include "drivers/isotp.h"
+#include "drivers/uds.h"
 #include "drivers/flash_driver.h"
-#include "config/can_config.h"
 #include "config/errno.h"
 /* USER CODE END Includes */
 
@@ -95,75 +92,27 @@ int main(void)
   MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
 
-  // ================= initialise the stack
-    sr_errno_t retval;
-    sr_fdcan_handle_t fd_handle1;
-
-    sr_fdcan_config_t cfg = {
-        .fifo_overwrite=FDCAN_RX_FIFO_BLOCKING,
-        .tx_id_type=FDCAN_STANDARD_ID,
-        .tx_brs=FDCAN_FRAME_FD_NO_BRS,
-        .tx_frame_format=FDCAN_CLASSIC_CAN,
-        .tx_event_fifo_control=FDCAN_NO_TX_EVENTS
-    };
-
-    retval = sr_fdcan_config(&fd_handle1, &hfdcan1, &cfg);
-    if (retval != SR_OK) {
-        for(int i = 0; i < 5; i++) {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-        }
-        return 1;
-    }
-    retval = sr_fdcan_filter_add(&fd_handle1, FDCAN_FILTER_RANGE, FDCAN_FILTER_TO_RXFIFO0, ISOTP_RX_ID, ISOTP_RX_ID);
-    if (retval != SR_OK) {
-        for(int i = 0; i < 5; i++) {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-        }
-        return 1;
-    }
-    if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK) {
-        for(int i = 0; i < 5; i++) {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-        }
-        return 1;
-    }
-    sr_isotp_init(&fd_handle1, ISOTP_FORMAT_NORMAL);
+  // ================= bring up the can -> isotp -> uds stack and serve
+  // only returns if the stack fails to start
+  if (sr_uds_server_start(&hfdcan1) != SR_OK) {
+      for(int i = 0; i < 5; i++) {
+          HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+          HAL_Delay(1000);
+          HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+          HAL_Delay(1000);
+      }
+      return 1;
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint8_t rx_buffer[2048];
-  uint32_t bytes_received;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // ===================== START SERVER
-    retval = sr_isotp_rx(rx_buffer, 2048, &bytes_received);
-
-    if (retval == SR_OK) {
-        char msg_recv[20];
-        memcpy(msg_recv, rx_buffer, 20);
-        char msg_send[15] = "brochachowacho";
-        retval = sr_isotp_tx((const uint8_t*)msg_send, 15);
-        if (retval != SR_OK) {
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000);
-            HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-            HAL_Delay(1000); 
-        }
-    }
-}
+  }
   /* USER CODE END 3 */
 }
 

@@ -8,21 +8,7 @@
 // Structs
 // =================================================================================================
 /**
- * @brief config struc to pass to sr+fdcan_config. each value is a #define found in stm32g4xx_hal_fdcan.h
- * 
- */
-typedef struct {
-    uint32_t fifo_overwrite;
-    uint32_t tx_id_type;
-    uint32_t tx_brs;
-    uint32_t tx_frame_format;
-    uint32_t tx_event_fifo_control;
-} sr_fdcan_config_t;
-
-/**
  * @brief Per-peripheral CAN driver state. One instance per FDCAN peripheral in use.
- * Caller owns the storage and passes a pointer to every driver call, so multiple peripherals with independent
- * configs can be used.
  */
 typedef struct {
     FDCAN_HandleTypeDef* hfdcan;
@@ -38,17 +24,13 @@ typedef struct {
 // Functions
 // =================================================================================================
 /**
- * @brief Configures the FD CAN peripheral
- * Handles configuration of things like the global filter, fifo overwrite etc.
- * Initiates tx header data which should be constant per CAN peripheral, stores in the handle
- * Should also activate notification for relevant FIFOs if using interrupts
+ * @brief Configures the FD CAN peripheral using settings in config/can_config.h
  *
- * @param handle - Driver state for this peripheral, filled in by this call
+ * @param handle - Driver handle for this peripheral, filled in by this call
  * @param hfdcan - HAL handle for the peripheral this handle will drive
- * @param config_struct - Struct as defined above
  * @return sr_errno_t - error code defined in errno.h
  */
-sr_errno_t sr_fdcan_config(sr_fdcan_handle_t* handle, FDCAN_HandleTypeDef* hfdcan, sr_fdcan_config_t* config_struct);
+sr_errno_t sr_fdcan_configure(sr_fdcan_handle_t* handle, FDCAN_HandleTypeDef* hfdcan);
 
 /**
  * @brief Adds a filter element
@@ -68,7 +50,7 @@ sr_errno_t sr_fdcan_filter_add(sr_fdcan_handle_t* handle, uint32_t filter_type, 
 /**
  * @brief
  *
- * @param handle can peripheral driver state
+ * @param handle
  * @param can_id id of can message
  * @param data pointer to byte array of data
  * @param length length of byte array
@@ -90,7 +72,7 @@ sr_errno_t sr_fdcan_tx_blocking(sr_fdcan_handle_t* handle, uint32_t can_id, uint
 /**
  * @brief Converts a HAL FDCAN_DLC_BYTES_x code (as read from FDCAN_RxHeaderTypeDef.DataLength)
  * into the actual number of data bytes. Only 0-8 map 1:1. 
- * sFD DLC codes 9-15 map to 12,16,20,24,32,48,64.
+ * DLC codes 9-15 map to 12,16,20,24,32,48,64.
  *
  * @param dlc - one of the FDCAN_DLC_BYTES_x values
  * @return uint32_t - number of data bytes, or 0 if dlc is not a valid code
