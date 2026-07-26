@@ -1,5 +1,5 @@
 #include <string.h>
-#include "drivers/isotp.h"
+#include "isotp/isotp.h"
 #include "drivers/dwt.h"
 #include "config/errno.h"
 #include "config/can_config.h"
@@ -131,7 +131,13 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
         }
     }
 
-    // Note that if incoming msg > rx buf (provided at init time), we error out in callback at this stage
+    // Note if incoming msg > rx buf, error in callback, so no need to check here
+    if (isotp_session.full_transmission_length == 0) {
+        rx_done_flag = 0;
+        isotp_session_idle(&isotp_session);
+        return ERR_ISOTP_INVALID_FRAME;
+    }
+
     *recv_length = isotp_session.full_transmission_length;
     rx_done_flag = 0;
     isotp_session_idle(&isotp_session);

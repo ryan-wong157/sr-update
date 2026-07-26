@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "drivers/uds.h"
+#include "uds/uds.h"
 #include "drivers/flash_driver.h"
 #include "config/errno.h"
 /* USER CODE END Includes */

@@ -43,11 +43,15 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 file(GLOB driver_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/drivers/*.c")
+file(GLOB isotp_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/isotp/*.c")
+file(GLOB uds_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/uds/*.c")
 file(GLOB isotplib_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/isotplib/*.c")
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${driver_src}
+    ${isotp_src}
+    ${uds_src}
     ${isotplib_src}
 )
 
