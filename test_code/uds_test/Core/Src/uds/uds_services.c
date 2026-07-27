@@ -72,7 +72,27 @@ sr_errno_t x10_sess_ctrl_handler(const uint8_t* req, uint32_t length) {
 }
 
 sr_errno_t x11_ecu_rst_handler(const uint8_t* req, uint32_t length) {
+    if (length != 2) {
+        return uds_send_nrc(NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+    }
 
+    uint8_t sid = req[0];
+    uint8_t sfb = req[1];
+    uint8_t suppress = sfb >> 7;
+
+    if (sfb != 0x01) {
+        return uds_send_nrc(NRC_SUB_FUNCTION_NOT_SUPPORTED);
+    }
+
+    if (!suppress) {
+        uint8_t res_buf[2] = {SID_ECU_RST_RES, sfb};
+        sr_isotp_tx(res_buf, sizeof(res_buf));
+    }
+
+    NVIC_SystemReset();
+
+    // dead branch
+    return SR_OK;
 }
 
 sr_errno_t x22_read_data_handler(const uint8_t* req, uint32_t length) {

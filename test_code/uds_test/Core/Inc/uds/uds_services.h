@@ -9,6 +9,7 @@ typedef enum {
     SESSION_PROGRAMMING
 } session_state_t;
 
+// Sends negative response code to client. Use NRC in uds_codes.h
 sr_errno_t uds_send_nrc(uint8_t nrc);
 
 // Service handlers. Each receives the isotp rx buffer holding the request
