@@ -79,8 +79,7 @@ static sr_errno_t uds_dispatch(uint32_t length) {
         case SID_TESTER_HBT_RQ:
             return x3e_hbt_handler(isotp_rx_buf, length);
         default: {
-            uint8_t temp_ret[2] = {SID_NEG_RES, NRC_SERVICE_NOT_SUPPORTED};
-            return sr_isotp_tx(temp_ret, sizeof(temp_ret));
+            return uds_send_nrc(NRC_SERVICE_NOT_SUPPORTED);
         }
     }
 }

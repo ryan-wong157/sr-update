@@ -4,11 +4,15 @@
 #include <stdint.h>
 #include "config/errno.h"
 
-/**
- * Service handlers. Each receives the isotp rx buffer holding the request
- * (req[0] is the SID) and the number of bytes received, and is responsible
- * for sending its own response via sr_isotp_tx.
- */
+typedef enum {
+    SESSION_DEFAULT = 0,
+    SESSION_PROGRAMMING
+} session_state_t;
+
+sr_errno_t uds_send_nrc(uint8_t nrc);
+
+// Service handlers. Each receives the isotp rx buffer holding the request
+// Sends its own response via sr_isotp_tx.
 sr_errno_t test_handler(const uint8_t* req, uint32_t length);
 sr_errno_t x10_sess_ctrl_handler(const uint8_t* req, uint32_t length);
 sr_errno_t x11_ecu_rst_handler(const uint8_t* req, uint32_t length);
