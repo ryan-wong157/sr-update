@@ -2,7 +2,7 @@
 #define UDS_SERVICES_H
 
 #include <stdint.h>
-#include "config/errno.h"
+#include "sr_errno.h"
 
 typedef enum {
     SESSION_DEFAULT = 0,

@@ -96,7 +96,7 @@ sr_errno_t x11_ecu_rst_handler(const uint8_t* req, uint32_t length) {
 }
 
 sr_errno_t x22_read_data_handler(const uint8_t* req, uint32_t length) {
-
+    
 }
 
 sr_errno_t x27_sec_access_handler(const uint8_t* req, uint32_t length) {

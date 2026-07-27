@@ -25,7 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "uds/uds.h"
 #include "drivers/flash_driver.h"
-#include "config/errno.h"
+#include "sr_errno.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

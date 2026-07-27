@@ -2,7 +2,7 @@
 #define CAN_DRIVER_H
 
 #include "main.h"
-#include "config/errno.h"
+#include "sr_errno.h"
 
 // =================================================================================================
 // Structs

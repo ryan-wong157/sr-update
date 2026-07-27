@@ -1,5 +1,5 @@
-#ifndef ERRNO_H
-#define ERRNO_H
+#ifndef SR_ERRNO_H
+#define SR_ERRNO_H
 
 typedef enum {
     SR_OK = 0,

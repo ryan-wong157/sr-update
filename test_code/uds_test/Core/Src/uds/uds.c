@@ -3,7 +3,7 @@
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
 #include "config/uds_config.h"
-#include "config/errno.h"
+#include "sr_errno.h"
 
 // tx and rx buffers used by isotp layer to put stuff in 
 static uint8_t isotp_tx_buf[CFG_UDS_TX_BUF_SIZE];

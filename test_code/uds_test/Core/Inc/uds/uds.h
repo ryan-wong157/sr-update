@@ -2,7 +2,7 @@
 #define UDS_H
 
 #include "main.h"
-#include "config/errno.h"
+#include "sr_errno.h"
 
 /**
  * @brief Brings up the whole can -> isotp -> uds stack and runs the server loop.

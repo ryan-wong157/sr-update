@@ -1,7 +1,7 @@
 #include <string.h>
 #include "isotp/isotp.h"
 #include "drivers/dwt.h"
-#include "config/errno.h"
+#include "sr_errno.h"
 #include "config/can_config.h"
 
 // own 1 session and 1 can peripheral
