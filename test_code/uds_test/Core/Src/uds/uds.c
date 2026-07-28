@@ -5,7 +5,7 @@
 #include "config/uds_config.h"
 #include "sr_errno.h"
 
-// tx and rx buffers used by isotp layer to put stuff in 
+// tx and rx buffers used by isotp layer to put stuff in
 static uint8_t isotp_tx_buf[CFG_UDS_TX_BUF_SIZE];
 static uint8_t isotp_rx_buf[CFG_UDS_RX_BUF_SIZE];
 
@@ -61,25 +61,24 @@ static sr_errno_t uds_dispatch(uint32_t length) {
 
     switch (serv_id_byte) {
         case 0x80:
-            return test_handler(isotp_rx_buf, length);
+            return test_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_SESS_CTRL_RQ:
-            return x10_sess_ctrl_handler(isotp_rx_buf, length);
+            return x10_sess_ctrl_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_ECU_RST_RQ:
-            return x11_ecu_rst_handler(isotp_rx_buf, length);
+            return x11_ecu_rst_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_READ_DATA_RQ:
-            return x22_read_data_handler(isotp_rx_buf, length);
+            return x22_read_data_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_SEC_ACCESS_RQ:
-            return x27_sec_access_handler(isotp_rx_buf, length);
+            return x27_sec_access_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_DOWNLOAD_START_RQ:
-            return x34_download_start_handler(isotp_rx_buf, length);
+            return x34_download_start_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_TRNSFR_DATA_RQ:
-            return x36_trnsfr_data_handler(isotp_rx_buf, length);
+            return x36_trnsfr_data_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_DOWNLOAD_EXIT_RQ:
-            return x37_download_exit_handler(isotp_rx_buf, length);
+            return x37_download_exit_handler(isotp_rx_buf, length, isotp_tx_buf);
         case SID_TESTER_HBT_RQ:
-            return x3e_hbt_handler(isotp_rx_buf, length);
-        default: {
-            return uds_send_nrc(NRC_SERVICE_NOT_SUPPORTED);
-        }
+            return x3e_hbt_handler(isotp_rx_buf, length, isotp_tx_buf);
+        default:
+            return uds_send_nrc(isotp_tx_buf, NRC_SERVICE_NOT_SUPPORTED);
     }
 }

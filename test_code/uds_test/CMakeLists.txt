@@ -61,9 +61,14 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/isotplib
 )
 
+if(NOT DEFINED NODE_ID)
+    message(FATAL_ERROR "NODE_ID must be defined and 12 bits, e.g. cmake -DNODE_ID=0x123 ..")
+endif()
+
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    NODE_ID=${NODE_ID}
 )
 
 # Remove wrong libob.a library dependency when using cpp files
