@@ -4,6 +4,7 @@
 #include "config/uds_config.h"
 #include "config/metadata.h"
 #include "isotp/isotp.h"
+#include "tweetnacl.h"
 
 /* TODO:
 - s3server timeout check (probably done in uds.c layer hmm, but then uds.c will have to know the session state)
@@ -169,6 +170,7 @@ sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
 }
 
 sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    // handle this
     return SR_OK;
 }
 

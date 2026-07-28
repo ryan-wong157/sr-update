@@ -45,7 +45,9 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 file(GLOB driver_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/drivers/*.c")
 file(GLOB isotp_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/isotp/*.c")
 file(GLOB uds_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/uds/*.c")
+# external
 file(GLOB isotplib_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/isotplib/*.c")
+file(GLOB tweetnacl_src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tweetnacl/*.c")
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
@@ -53,12 +55,14 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     ${isotp_src}
     ${uds_src}
     ${isotplib_src}
+    ${tweetnacl_src}
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     ${CMAKE_CURRENT_SOURCE_DIR}/isotplib
+    ${CMAKE_CURRENT_SOURCE_DIR}/tweetnacl
 )
 
 if(NOT DEFINED NODE_ID)
