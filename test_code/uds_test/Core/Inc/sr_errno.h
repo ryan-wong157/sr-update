@@ -22,6 +22,10 @@ typedef enum {
     ERR_FDCAN_TIMEOUT,
     ERR_FDCAN_START,
 
+    // RNG errors
+    ERR_RNG_FAIL_START,
+    ERR_RNG_FAIL_GEN,
+
     // isotp errors
     ERR_ISOTP_TX_LEN,
     ERR_ISOTP_INVALID_FRAME,

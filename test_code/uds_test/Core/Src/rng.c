@@ -38,7 +38,7 @@ void MX_RNG_Init(void)
 
   /* USER CODE END RNG_Init 1 */
   hrng.Instance = RNG;
-  hrng.Init.ClockErrorDetection = RNG_CED_DISABLE;
+  hrng.Init.ClockErrorDetection = RNG_CED_ENABLE;
   if (HAL_RNG_Init(&hrng) != HAL_OK)
   {
     Error_Handler();
