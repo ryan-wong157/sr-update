@@ -3,9 +3,12 @@
 
 #include "config/flash_config.h"
 
+// How many bytes should 0x36 transfer data send at max (max 2^128...)
+#define CFG_UDS_x36_MAX_BLOCK_LEN 256
+
 // Buffer sizes
 #define CFG_UDS_TX_BUF_SIZE 256
-#define CFG_UDS_RX_BUF_SIZE 258 // SID, sequence counter, 256 transfer bytes for 0x36 
+#define CFG_UDS_RX_BUF_SIZE CFG_UDS_x36_MAX_BLOCK_LEN + 2 // SID, sequence counter, num transfer bytes for 0x36 
 
 // Timing params all in ms (star are in 10s of ms)
 #define CFG_S3_SERVER 5000
