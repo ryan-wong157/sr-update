@@ -19,7 +19,8 @@
 sr_errno_t sr_isotp_start(FDCAN_HandleTypeDef* hfdcan, isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len);
 
 /**
- * @brief User gives a bytes to send over CAN. Should be <= tx_len from above.
+ * @brief User should use and re-pass the pointer to tx_buf from above into this function
+ * The reason for this is to prevent unecessary copy and allocation of another buffer. length should be how much of this tx_buf we actually want to transfer
  * This function handles the entire back and forth at the CAN level, 
  * BLOCKING until the transfer is done or fails or timeout
  * 

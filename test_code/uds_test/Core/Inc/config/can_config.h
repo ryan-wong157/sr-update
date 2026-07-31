@@ -1,8 +1,6 @@
 #ifndef CAN_CONFIG_H
 #define CAN_CONFIG_H
 
-#include "main.h"
-
 // Temporary
 #define CFG_ISOTP_TX_ID 0x100
 #define CFG_ISOTP_RX_ID 0x200

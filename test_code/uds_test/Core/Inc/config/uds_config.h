@@ -1,9 +1,11 @@
 #ifndef UDS_CONFIG_H
 #define UDS_CONFIG_H
 
+#include "config/flash_config.h"
+
 // Buffer sizes
 #define CFG_UDS_TX_BUF_SIZE 256
-#define CFG_UDS_RX_BUF_SIZE 2048
+#define CFG_UDS_RX_BUF_SIZE 258 // SID, sequence counter, 256 transfer bytes for 0x36 
 
 // Timing params all in ms (star are in 10s of ms)
 #define CFG_S3_SERVER 5000

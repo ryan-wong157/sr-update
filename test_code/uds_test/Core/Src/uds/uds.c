@@ -1,9 +1,13 @@
 #include "uds/uds.h"
-#include "uds/uds_services.h"
+#include "uds/srv_test.h"
+#include "uds/srv_session_control.h"
+#include "uds/srv_reset.h"
+#include "uds/srv_read_data.h"
+#include "uds/srv_security_access.h"
+#include "uds/srv_download.h"
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
 #include "config/uds_config.h"
-#include "sr_errno.h"
 
 // tx and rx buffers used by isotp layer to put stuff in
 static uint8_t isotp_tx_buf[CFG_UDS_TX_BUF_SIZE];

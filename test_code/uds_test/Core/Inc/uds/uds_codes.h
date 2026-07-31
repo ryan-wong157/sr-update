@@ -1,6 +1,9 @@
 #ifndef UDS_CODES_H
 #define UDS_CODES_H
 
+#include <stdint.h>
+#include "sr_errno.h"
+
 // =================================================================================================
 // UDS Service IDs
 // =================================================================================================
@@ -50,5 +53,8 @@
 #define NRC_WRONG_BLOCK_SEQUENCE_COUNTER 0x73
 #define NRC_REQUEST_RECEIVED_RESPONSE_PENDING 0x78
 #define NRC_SERVICE_NOT_SUPPORTED_IN_CURR_SESS 0x7F
+
+// Sends negative response code to client
+sr_errno_t uds_send_nrc(uint8_t* tx_buf, uint8_t nrc);
 
 #endif
