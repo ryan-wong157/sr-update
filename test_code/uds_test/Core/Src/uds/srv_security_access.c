@@ -27,16 +27,16 @@ void x27_on_session_change(void) {
 
 sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 2) {
-        return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+        return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
 
     if (get_session() != SESSION_PROGRAMMING) {
-        return uds_send_nrc(tx_buf, NRC_SERVICE_NOT_SUPPORTED_IN_CURR_SESS);
+        return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_SERVICE_NOT_SUPPORTED_IN_CURR_SESS);
     }
 
     // retry check
     if (HAL_GetTick() - timeout_start < CFG_RETRY_TIMEOUT && num_attempts >= 3) {
-        return uds_send_nrc(tx_buf, NRC_TIME_DELAY_NOT_EXPIRED);
+        return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_TIME_DELAY_NOT_EXPIRED);
     } else if (HAL_GetTick() - timeout_start >= CFG_RETRY_TIMEOUT && num_attempts >= 3) {
         num_attempts = 0;
     }
@@ -60,12 +60,12 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
     } else if ((sfb & 0x7F) == 0x02) {
         if (unlock_state == EXPECTING_REQUEST) {
             // if not expecting a signature
-            return uds_send_nrc(tx_buf, NRC_REQUEST_SEQUENCE_ERROR);
+            return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_REQUEST_SEQUENCE_ERROR);
         }
 
         if (rx_length != 66) {
             // expected length must be SID, SFB, 64 byte signature
-            return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+            return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
         }
 
         uint8_t signature[68];
@@ -87,7 +87,7 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
             if (num_attempts >= CFG_MAX_x27_ATTEMPTS) {
                 timeout_start = HAL_GetTick();
             }
-            return uds_send_nrc(tx_buf, NRC_INVALID_KEY);
+            return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INVALID_KEY);
         }
         unlock_state = EXPECTING_REQUEST;
         security_access = SECURITY_UNLOCKED;
@@ -100,6 +100,6 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
         return SR_OK;
     } else {
         // unknown sfb
-        return uds_send_nrc(tx_buf, NRC_SUB_FUNCTION_NOT_SUPPORTED);
+        return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_SUB_FUNCTION_NOT_SUPPORTED);
     }
 }

@@ -13,11 +13,11 @@ static uint32_t num_bytes_to_download = 0;
 sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3) {
         // can we at least read SID, dataFormatIdentifier and addressAndLengthFormatIdentifier?
-        return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
 
     if (get_security_access() != SECURITY_UNLOCKED || get_session() != SESSION_PROGRAMMING) {
-        return uds_send_nrc(tx_buf, NRC_SECURITY_ACCESS_DENIED);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_SECURITY_ACCESS_DENIED);
     }
 
     uint8_t data_format_id = rx_buf[1];
@@ -27,19 +27,19 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
 
     if (data_format_id != 0x00) {
         // no compression nor encryption supported
-        return uds_send_nrc(tx_buf, NRC_REQUEST_OUT_OF_RANGE);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
     if (mem_size_len == 0 || mem_size_len > 4 || mem_addr_len != 4) {
         // 1. len of memSize section can't be 0 
         // 2. total num bytes to transfer must fit into a uint32_t
         // 2. memAddress field must be 4 bytes (since we are 32 bit addressed)
-        return uds_send_nrc(tx_buf, NRC_REQUEST_OUT_OF_RANGE);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
     if (rx_length < 3 + mem_addr_len + mem_size_len) {
         // is the buffer as big as they claim?
-        return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
 
     // get memorySize
@@ -50,7 +50,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
     }
     num_bytes_to_download = mem_size;
     if (num_bytes_to_download == 0) {
-        return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
 
     // form response
@@ -77,6 +77,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
 // e.g. it should know that for a certain sector/page, if it needs to write more than once to the same sector/page
 // because one buffer of data < sector/page size, it will know to erase ONCE per sector/page
 sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    
     return SR_OK;
 }
 

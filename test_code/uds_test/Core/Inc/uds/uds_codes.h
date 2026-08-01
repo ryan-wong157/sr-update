@@ -56,6 +56,6 @@
 #define NRC_SERVICE_NOT_SUPPORTED_IN_CURR_SESS 0x7F
 
 // Sends negative response code to client
-sr_errno_t uds_send_nrc(uint8_t* tx_buf, uint8_t nrc);
+sr_errno_t uds_send_nrc(uint8_t* tx_buf, uint8_t original_sid, uint8_t nrc);
 
 #endif

@@ -7,9 +7,9 @@
 
 sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3 || !(rx_length % 2)) {
-        return uds_send_nrc(tx_buf, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+        return uds_send_nrc(tx_buf, SID_READ_DATA_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
-    
+
     // Build response buffer
     tx_buf[0] = SID_READ_DATA_RES;
 
@@ -33,7 +33,7 @@ sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
         }
 
         if (record_len != 0 && tx_index + record_len > CFG_UDS_TX_BUF_SIZE) {
-            return uds_send_nrc(tx_buf, NRC_RESPONSE_TOO_LONG);
+            return uds_send_nrc(tx_buf, SID_READ_DATA_RQ, NRC_RESPONSE_TOO_LONG);
         }
 
         switch (did) {
@@ -74,7 +74,7 @@ sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
     }
 
     if (!any_supported) {
-        return uds_send_nrc(tx_buf, NRC_REQUEST_OUT_OF_RANGE);
+        return uds_send_nrc(tx_buf, SID_READ_DATA_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
     return sr_isotp_tx(tx_buf, tx_index);
