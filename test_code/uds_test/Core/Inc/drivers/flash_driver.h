@@ -34,4 +34,30 @@ sr_errno_t sr_flash_write64(uint32_t address, uint64_t data);
  */
 sr_errno_t sr_flash_erase_page(uint32_t bank, uint32_t start_page, uint32_t num_pages);
 
+/**
+ * @brief Resolves an absolute flash address to its containing bank and page index.
+ *
+ * This is the single place that knows the chip's bank/page geometry
+ * (bank count, pages per bank, address ranges) so callers above this driver
+ * never need to hardcode a bank or compute page numbers themselves.
+ *
+ * @param address - absolute flash address
+ * @param bank - out: bank containing address (e.g. FLASH_BANK_1)
+ * @param page - out: 0-indexed page number within that bank
+ * @return sr_errno_t - ERR_FLASH_INVALID_INPUT if address is out of range
+ */
+sr_errno_t sr_flash_get_page_info(uint32_t address, uint32_t* bank, uint32_t* page);
+
+/**
+ * @brief Resolves a bank/page pair to the absolute address of that page's first byte.
+ *
+ * Inverse of sr_flash_get_page_info().
+ *
+ * @param bank - target bank (e.g. FLASH_BANK_1)
+ * @param page - 0-indexed page number within that bank
+ * @param address - out: absolute address of the start of that page
+ * @return sr_errno_t - ERR_FLASH_INVALID_INPUT if bank/page is out of range
+ */
+sr_errno_t sr_flash_get_page_address(uint32_t bank, uint32_t page, uint32_t* address);
+
 #endif

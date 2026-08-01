@@ -5,7 +5,7 @@
 #include "isotp/isotp.h"
 #include "config/uds_config.h"
 #include "config/flash_config.h"
-#include "drivers/flash_driver.h"
+#include "drivers/flash_writer.h"
 
 static download_state_t curr_state = DOWNLOAD_IDLE;
 static uint32_t curr_write_addr = FW_SLOT_B_START_ADDRESS;
@@ -55,6 +55,10 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
+    if (sr_flash_writer_begin(curr_write_addr) != SR_OK) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
+    }
+
     // form response
     tx_buf[0] = SID_DOWNLOAD_START_RES;
 
@@ -76,9 +80,6 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
     return sr_isotp_tx(tx_buf, 2 + bytes_needed_for_maxblocklength);
 }
 
-// this will combine the flash write and erase depending on PAGE/SECTOR_SIZE / num_bytes_transfered_per_x36
-// e.g. it should know that for a certain sector/page, if it needs to write more than once to the same sector/page
-// because one buffer of data < sector/page size, it will know to erase ONCE per sector/page
 sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3 || rx_length > (2 + CFG_UDS_x36_MAX_BLOCK_LEN)) {
         // Must adhere to block length limit as well
@@ -108,13 +109,23 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
     }
 
     // Finally, seq_counter == expected_block_seq
-    
+    if (sr_flash_writer_write(&rx_buf[2], num_bytes_sent) != SR_OK) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_PROGRAMMING_FAILURE);
+    }
 
+    curr_write_addr += num_bytes_sent;
+    num_bytes_to_download -= num_bytes_sent;
+    expected_block_seq++;
 
-    return SR_OK;
+    tx_buf[0] = SID_TRNSFR_DATA_RES;
+    tx_buf[1] = seq_counter;
+    return sr_isotp_tx(tx_buf, 2);
 }
 
 sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    if (sr_flash_writer_finish() != SR_OK) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_PROGRAMMING_FAILURE);
+    }
     return SR_OK;
 }
 

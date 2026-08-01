@@ -61,4 +61,25 @@ sr_errno_t sr_flash_erase_page(uint32_t bank, uint32_t start_page, uint32_t num_
 
     HAL_FLASH_Lock();
     return SR_OK;
-}    
+}
+
+sr_errno_t sr_flash_get_page_info(uint32_t address, uint32_t* bank, uint32_t* page) {
+    if (address < FLASH_BEGIN_ADDRESS || address > FLASH_END_ADDRESS) {
+        return ERR_FLASH_INVALID_INPUT;
+    }
+
+    // Change if different MCU
+    *bank = FLASH_BANK_1;
+    *page = (address - FLASH_BEGIN_ADDRESS) / FLASH_PAGE_SIZE_BYTES;
+    return SR_OK;
+}
+
+sr_errno_t sr_flash_get_page_address(uint32_t bank, uint32_t page, uint32_t* address) {
+    // Change if different MCU
+    if (bank != FLASH_BANK_1 || page >= NUM_FLASH_PAGES) {
+        return ERR_FLASH_INVALID_INPUT;
+    }
+
+    *address = FLASH_BEGIN_ADDRESS + page * FLASH_PAGE_SIZE_BYTES;
+    return SR_OK;
+}
