@@ -8,9 +8,8 @@
 #include "drivers/flash_writer.h"
 
 static download_state_t curr_state = DOWNLOAD_IDLE;
-static uint32_t curr_write_addr = FW_SLOT_B_START_ADDRESS;
 static uint32_t num_bytes_to_download = 0;
-static uint8_t expected_block_seq = 1;
+static uint8_t expected_seq_counter = 1;
 
 sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3) {
@@ -55,7 +54,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
-    if (sr_flash_writer_begin(curr_write_addr) != SR_OK) {
+    if (sr_flash_writer_begin(FW_SLOT_B_START_ADDRESS) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
@@ -97,25 +96,24 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_TRANSFER_DATA_SUSPENDED);
     }
 
-    if (seq_counter == expected_block_seq - 1) {
+    if (seq_counter == expected_seq_counter - 1) {
         // already handeled block, but response was lost so client re-tried 
         tx_buf[0] = SID_TRNSFR_DATA_RES;
         tx_buf[1] = seq_counter;
         return sr_isotp_tx(tx_buf, 2);
     }
 
-    if (seq_counter < expected_block_seq - 1 || seq_counter > expected_block_seq) {
+    if (seq_counter < expected_seq_counter - 1 || seq_counter > expected_seq_counter) {
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_WRONG_BLOCK_SEQUENCE_COUNTER);
     }
 
-    // Finally, seq_counter == expected_block_seq
+    // Finally, seq_counter == expected_seq_counter
     if (sr_flash_writer_write(&rx_buf[2], num_bytes_sent) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
-    curr_write_addr += num_bytes_sent;
     num_bytes_to_download -= num_bytes_sent;
-    expected_block_seq++;
+    expected_seq_counter++;
 
     tx_buf[0] = SID_TRNSFR_DATA_RES;
     tx_buf[1] = seq_counter;
