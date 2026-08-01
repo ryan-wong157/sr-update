@@ -7,8 +7,10 @@
 #include "config/flash_config.h"
 #include "drivers/flash_driver.h"
 
-static uint32_t curr_write_addr = 0; // TODO: THIS SHOULD BE START OF SECOND SLOT
+static download_state_t curr_state = DOWNLOAD_IDLE;
+static uint32_t curr_write_addr = FW_SLOT_B_START_ADDRESS;
 static uint32_t num_bytes_to_download = 0;
+static uint8_t expected_block_seq = 1;
 
 sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3) {
@@ -49,8 +51,8 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         mem_size = (mem_size << 8) | rx_buf[index_offset + i];
     }
     num_bytes_to_download = mem_size;
-    if (num_bytes_to_download == 0) {
-        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+    if (num_bytes_to_download == 0 || num_bytes_to_download > FW_SLOT_SIZE_BYTES) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
     // form response
@@ -70,6 +72,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         tx_buf[2 + i] = (CFG_UDS_x36_MAX_BLOCK_LEN >> (8 * (bytes_needed_for_maxblocklength - 1 - i))) & 0xFF;
     }
     
+    curr_state = DOWNLOAD_IN_PROGRESS;
     return sr_isotp_tx(tx_buf, 2 + bytes_needed_for_maxblocklength);
 }
 
@@ -77,7 +80,37 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
 // e.g. it should know that for a certain sector/page, if it needs to write more than once to the same sector/page
 // because one buffer of data < sector/page size, it will know to erase ONCE per sector/page
 sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    if (rx_length < 3 || rx_length > (2 + CFG_UDS_x36_MAX_BLOCK_LEN)) {
+        // Must adhere to block length limit as well
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+    }
+
+    if (curr_state == DOWNLOAD_IDLE || num_bytes_to_download == 0) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_REQUEST_SEQUENCE_ERROR);
+    }
+
+    uint8_t seq_counter = rx_buf[1];
+    uint32_t num_bytes_sent = rx_length - 2;
+
+    if (num_bytes_sent > num_bytes_to_download) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_TRANSFER_DATA_SUSPENDED);
+    }
+
+    if (seq_counter == expected_block_seq - 1) {
+        // already handeled block, but response was lost so client re-tried 
+        tx_buf[0] = SID_TRNSFR_DATA_RES;
+        tx_buf[1] = seq_counter;
+        return sr_isotp_tx(tx_buf, 2);
+    }
+
+    if (seq_counter < expected_block_seq - 1 || seq_counter > expected_block_seq) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_WRONG_BLOCK_SEQUENCE_COUNTER);
+    }
+
+    // Finally, seq_counter == expected_block_seq
     
+
+
     return SR_OK;
 }
 
