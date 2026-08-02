@@ -42,8 +42,9 @@ sr_errno_t x10_sess_ctrl_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
     }
     uint8_t sfb = rx_buf[1];
     uint8_t suppress = sfb >> 7;
+    uint8_t sub_function = sfb & 0x7F;
 
-    if (sfb != SESSION_DEFAULT && sfb != SESSION_PROGRAMMING) {
+    if (sub_function != SESSION_DEFAULT && sub_function != SESSION_PROGRAMMING) {
         return uds_send_nrc(tx_buf, SID_SESS_CTRL_RQ, NRC_SUB_FUNCTION_NOT_SUPPORTED);
     }
 
@@ -51,7 +52,7 @@ sr_errno_t x10_sess_ctrl_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
     x27_on_session_change();
     // Leaving programming session (or re-entering it) cancels any download in progress
     reset_programming();
-    session_state = (session_state_t)sfb;
+    session_state = (session_state_t)sub_function;
     s3_refresh();
 
     if (suppress) {

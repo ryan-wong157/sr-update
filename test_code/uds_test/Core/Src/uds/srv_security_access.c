@@ -91,6 +91,7 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
         }
         unlock_state = EXPECTING_REQUEST;
         security_access = SECURITY_UNLOCKED;
+        num_attempts = 0;
 
         if (!suppress) {
             tx_buf[0] = SID_SEC_ACCESS_RES;
