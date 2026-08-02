@@ -108,6 +108,13 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
     }
 
     // Finally, seq_counter == expected_seq_counter
+    sr_errno_t result = uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_REQUEST_RECEIVED_RESPONSE_PENDING);
+    if (result != SR_OK) {
+        // if isotp is cooked, abort
+        return result;
+    }
+
+
     if (sr_flash_writer_write(&rx_buf[2], num_bytes_sent) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_PROGRAMMING_FAILURE);
     }
