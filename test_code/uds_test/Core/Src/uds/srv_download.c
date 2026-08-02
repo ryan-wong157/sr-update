@@ -120,11 +120,29 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
     return sr_isotp_tx(tx_buf, 2);
 }
 
+/*
+This should: flush the flash write buffer, verify the metadata (signature) and do bootloader-related stuff
+*/
 sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    if (rx_length != 1) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+    }
+
+    if (num_bytes_to_download != 0 || curr_state == DOWNLOAD_IDLE) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_REQUEST_SEQUENCE_ERROR);
+    }
+
+    // flush final write to flash
     if (sr_flash_writer_finish() != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_PROGRAMMING_FAILURE);
     }
-    return SR_OK;
+
+    // TODO: CHECK INTEGRITY AND OTHER THINGS.
+    // IF FAIL, SEND BACK 0X72 GENERAL PROGRAMMING FAILURE
+
+    tx_buf[0] = SID_DOWNLOAD_EXIT_RES;
+
+    return sr_isotp_tx(tx_buf, 1);
 }
 
 sr_errno_t x3e_hbt_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
