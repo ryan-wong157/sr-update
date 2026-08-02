@@ -151,3 +151,8 @@ sr_errno_t sr_flash_writer_finish(void) {
     carry_len = 0;
     return err;
 }
+
+void sr_flash_writer_abort(void) {
+    session_active = 0;
+    carry_len = 0;
+}

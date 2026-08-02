@@ -153,5 +153,28 @@ sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, 
 }
 
 sr_errno_t x3e_hbt_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
+    if (rx_length != 2) {
+        return uds_send_nrc(tx_buf, SID_TESTER_HBT_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
+    }
+    uint8_t sfb = rx_buf[1];
+    if (!(sfb == 0x00 || sfb == 0x80)) {
+        return uds_send_nrc(tx_buf, SID_TESTER_HBT_RQ, NRC_SUB_FUNCTION_NOT_SUPPORTED);
+    }
+
+    if (sfb == 0x00) {
+        tx_buf[0] = SID_TESTER_HBT_RES;
+        tx_buf[1] = sfb;
+        return sr_isotp_tx(tx_buf, 2);
+    }
+
     return SR_OK;
+}
+
+void reset_programming(void) {
+    if (curr_state != DOWNLOAD_IDLE) {
+        sr_flash_writer_abort();
+    }
+    curr_state = DOWNLOAD_IDLE;
+    num_bytes_to_download = 0;
+    expected_seq_counter = 1;
 }

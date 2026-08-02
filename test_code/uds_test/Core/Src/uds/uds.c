@@ -29,6 +29,8 @@ sr_errno_t sr_uds_server_start(FDCAN_HandleTypeDef* hfdcan) {
     }
 
     while (1) {
+        s3_check_timeout();
+
         uint32_t bytes_received;
         retval = sr_isotp_rx(&bytes_received);
 
@@ -62,6 +64,9 @@ sr_errno_t sr_uds_server_start(FDCAN_HandleTypeDef* hfdcan) {
 
 static sr_errno_t uds_dispatch(uint32_t length) {
     uint8_t serv_id_byte = isotp_rx_buf[0];
+
+    // Any incoming message (including tester present / heartbeat) keeps S3 alive
+    s3_refresh();
 
     switch (serv_id_byte) {
         case 0x80:

@@ -37,4 +37,10 @@ sr_errno_t sr_flash_writer_write(const uint8_t* data, uint32_t len);
  */
 sr_errno_t sr_flash_writer_finish(void);
 
+/**
+ * @brief Abandons the current write session without flushing buffered bytes.
+ * Used to cancel an in-progress download. Any pages already erased/written remain
+ */
+void sr_flash_writer_abort(void);
+
 #endif

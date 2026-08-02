@@ -1,15 +1,14 @@
 #include <stdint.h>
 #include "uds/srv_session_control.h"
 #include "uds/srv_security_access.h"
+#include "uds/srv_download.h"
 #include "uds/uds_codes.h"
 #include "config/uds_config.h"
 #include "isotp/isotp.h"
+#include "main.h"
 
 static session_state_t session_state = SESSION_DEFAULT;
-
-/* TODO:
-- s3server timeout check (probably done in uds.c layer hmm, but then uds.c will have to know the session state)
-*/
+static uint32_t s3_deadline = 0;
 
 void set_session(session_state_t sesn) {
     session_state = sesn;
@@ -17,6 +16,24 @@ void set_session(session_state_t sesn) {
 
 session_state_t get_session() {
     return session_state;
+}
+
+void s3_refresh(void) {
+    if (session_state != SESSION_DEFAULT) {
+        s3_deadline = HAL_GetTick() + CFG_S3_SERVER;
+    }
+}
+
+void s3_check_timeout(void) {
+    if (session_state == SESSION_DEFAULT) {
+        return;
+    }
+
+    if ((int32_t)(HAL_GetTick() - s3_deadline) >= 0) {
+        reset_programming();
+        x27_on_session_change();
+        session_state = SESSION_DEFAULT;
+    }
 }
 
 sr_errno_t x10_sess_ctrl_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
@@ -32,8 +49,10 @@ sr_errno_t x10_sess_ctrl_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
 
     // Reset security no matter what - every session change re-locks
     x27_on_session_change();
-    // PROGRAMMING_BACK_TO_IDLE()
+    // Leaving programming session (or re-entering it) cancels any download in progress
+    reset_programming();
     session_state = (session_state_t)sfb;
+    s3_refresh();
 
     if (suppress) {
         return SR_OK;
