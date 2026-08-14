@@ -3,9 +3,10 @@
 // code based on https://www.hesliplabs.com/blog/swo-and-cycle-counting-on-stm32
 // Adapted by Ryan Wong
 
-#include "drivers/dwt.h"
+#include "main.h"
+#include "mcu_interface/sys_misc.h"
 
-void sr_dwt_init() {
+void sr_counter_start() {
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	DWT->CYCCNT = 0;
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
@@ -13,4 +14,12 @@ void sr_dwt_init() {
 
 uint32_t sr_cyccnt() {
     return DWT->CYCCNT;
+}
+
+uint32_t sr_millis() {
+    return HAL_GetTick();
+}
+
+void sr_reset_mcu() {
+    HAL_NVIC_SystemReset();
 }
