@@ -1,11 +1,11 @@
-#include "main.h"
+#include <stdint.h>
 #include "tweetnacl.h"
+#include "uds/uds_codes.h"
 #include "uds/srv_security_access.h"
 #include "uds/srv_session_control.h"
-#include "uds/uds_codes.h"
-#include "config/uds_config.h"
 #include "isotp/isotp.h"
-#include "drivers/rng_driver.h"
+#include "mcu_interface/rng_driver.h"
+#include "config/uds_config.h"
 
 // globals for 0x27 state
 static security_access_t security_access = SECURITY_LOCKED;
@@ -35,9 +35,9 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
     }
 
     // retry check
-    if (HAL_GetTick() - timeout_start < CFG_RETRY_TIMEOUT && num_attempts >= 3) {
+    if (sr_millis() - timeout_start < CFG_RETRY_TIMEOUT && num_attempts >= 3) {
         return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_TIME_DELAY_NOT_EXPIRED);
-    } else if (HAL_GetTick() - timeout_start >= CFG_RETRY_TIMEOUT && num_attempts >= 3) {
+    } else if (sr_millis() - timeout_start >= CFG_RETRY_TIMEOUT && num_attempts >= 3) {
         num_attempts = 0;
     }
 
@@ -85,7 +85,7 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
             unlock_state = EXPECTING_REQUEST;
             num_attempts++;
             if (num_attempts >= CFG_MAX_x27_ATTEMPTS) {
-                timeout_start = HAL_GetTick();
+                timeout_start = sr_millis();
             }
             return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INVALID_KEY);
         }

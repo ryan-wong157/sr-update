@@ -1,7 +1,7 @@
-#include "main.h"
 #include "uds/srv_reset.h"
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
+#include "mcu_interface/sys_misc.h"
 
 sr_errno_t x11_ecu_rst_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length != 2) {
@@ -21,7 +21,7 @@ sr_errno_t x11_ecu_rst_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_
         sr_isotp_tx(tx_buf, 2);
     }
 
-    NVIC_SystemReset();
+    sr_reset_mcu();
 
     // dead branch
     return SR_OK;

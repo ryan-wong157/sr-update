@@ -1,11 +1,11 @@
 #include <stdint.h>
+#include "uds/uds_codes.h"
 #include "uds/srv_session_control.h"
 #include "uds/srv_security_access.h"
 #include "uds/srv_download.h"
-#include "uds/uds_codes.h"
-#include "config/uds_config.h"
 #include "isotp/isotp.h"
-#include "main.h"
+#include "mcu_interface/sys_misc.h"
+#include "config/uds_config.h"
 
 static session_state_t session_state = SESSION_DEFAULT;
 static uint32_t s3_deadline = 0;
@@ -20,7 +20,7 @@ session_state_t get_session() {
 
 void s3_refresh(void) {
     if (session_state != SESSION_DEFAULT) {
-        s3_deadline = HAL_GetTick() + CFG_S3_SERVER;
+        s3_deadline = sr_millis() + CFG_S3_SERVER;
     }
 }
 
@@ -29,7 +29,7 @@ void s3_check_timeout(void) {
         return;
     }
 
-    if ((int32_t)(HAL_GetTick() - s3_deadline) >= 0) {
+    if ((int32_t)(sr_millis() - s3_deadline) >= 0) {
         reset_programming();
         x27_on_session_change();
         session_state = SESSION_DEFAULT;

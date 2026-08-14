@@ -1,7 +1,6 @@
 #ifndef UDS_H
 #define UDS_H
 
-#include "main.h"
 #include "sr_errno.h"
 
 /**

@@ -1,8 +1,10 @@
-#include "drivers/rng_driver.h"
+#include <stdint.h>
+#include "main.h"
+#include "mcu_interface/rng_driver.h"
 
-static RNG_HandleTypeDef* my_hrng;
+static RNG_HandleTypeDef* my_hrng = &hrng1;
 
-sr_errno_t sr_rng_start(RNG_HandleTypeDef* hrng) {
+sr_errno_t sr_rng_start() {
     my_hrng = hrng;
     if (HAL_RNG_Init(hrng) != HAL_OK) {
         return ERR_RNG_FAIL_START;
