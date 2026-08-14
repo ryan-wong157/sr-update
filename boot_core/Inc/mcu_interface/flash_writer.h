@@ -4,22 +4,34 @@
 #include <stdint.h>
 #include "sr_errno.h"
 
+// Firmware flash slots. The mcu layer owns the address/size each slot maps to.
+typedef enum {
+    FLASH_SLOT_A,
+    FLASH_SLOT_B,
+} flash_slot_t;
+
 /**
- * @brief Begins a new flash write session starting at start_address.
+ * @brief Returns the number of bytes available in a flash slot.
+ *
+ * @param slot - target flash slot
+ * @return uint32_t - capacity of the slot in bytes
+ */
+uint32_t sr_flash_get_slot_capacity(flash_slot_t slot);
+
+/**
+ * @brief Begins a new flash write session targeting the given slot.
  *
  * Resets internal carry buffer and erase-tracking state.
- * start_address must be page-aligned (FLASH_PAGE_SIZE_BYTES) and within a valid
- * flash region
  *
- * @param start_address - first address the session will write to
+ * @param slot - flash slot the session will write to
  * @return sr_errno_t
  */
-sr_errno_t sr_flash_writer_begin(uint32_t start_address);
+sr_errno_t sr_flash_writer_begin(flash_slot_t slot);
 
 /**
  * @brief Writes len bytes of data, continuing from wherever the current session left off.
  *
- * The write cursor is tracked internally (starting from the address passed to
+ * The write cursor is tracked internally (starting from the beginning of the slot passed to
  * sr_flash_writer_begin()) and advances automatically as data is written, so the
  * caller never needs to supply or track an address itself.
  *

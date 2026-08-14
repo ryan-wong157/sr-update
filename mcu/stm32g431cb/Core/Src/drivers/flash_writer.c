@@ -1,10 +1,10 @@
 // Flash write session layer sitting above flash_driver.
 // Handles page-erase-once-per-page tracking and doubleword buffering so callers
-// can write an arbitrary amount of data at an address without worrying about
+// can write an arbitrary amount of data to a flash slot without worrying about
 // flash page/doubleword stuff.
 
-#include <stdint.h>
-#include "flash_writer.h"
+#include <stddef.h>
+#include "mcu_interface/flash_writer.h"
 #include "mcu_interface/flash_driver.h"
 #include "config/flash_config.h"
 
@@ -14,6 +14,24 @@ static uint32_t current_bank;
 static uint32_t current_page;
 static uint8_t carry[8];
 static uint8_t carry_len;
+
+static sr_errno_t slot_to_address(flash_slot_t slot, uint32_t* address) {
+    switch (slot) {
+        case FLASH_SLOT_A:
+            *address = FW_SLOT_A_START_ADDRESS;
+            return SR_OK;
+        case FLASH_SLOT_B:
+            *address = FW_SLOT_B_START_ADDRESS;
+            return SR_OK;
+        default:
+            return ERR_FLASH_INVALID_INPUT;
+    }
+}
+
+uint32_t sr_flash_get_slot_capacity(flash_slot_t slot) {
+    (void)slot;
+    return FW_SLOT_SIZE_BYTES;
+}
 
 static uint64_t pack_doubleword(const uint8_t* bytes) {
     // relies on little endian Cortex-M byte order: bytes[0] (lowest address)
@@ -59,10 +77,16 @@ static sr_errno_t erase_up_to(uint32_t address, uint32_t total_len) {
     return SR_OK;
 }
 
-sr_errno_t sr_flash_writer_begin(uint32_t start_address) {
+sr_errno_t sr_flash_writer_begin(flash_slot_t slot) {
+    uint32_t start_address;
+    sr_errno_t err = slot_to_address(slot, &start_address);
+    if (err != SR_OK) {
+        return err;
+    }
+
     uint32_t bank;
     uint32_t page;
-    sr_errno_t err = sr_flash_get_page_info(start_address, &bank, &page);
+    err = sr_flash_get_page_info(start_address, &bank, &page);
     if (err != SR_OK) {
         return err;
     }
@@ -86,7 +110,7 @@ sr_errno_t sr_flash_writer_begin(uint32_t start_address) {
 }
 
 /*
-Does a thing where if len is not doubleword (8 byte) aligned, the leftover bytes are buffered 
+Does a thing where if len is not doubleword (8 byte) aligned, the leftover bytes are buffered
 then prepended into the next double word write. If it's last write, then sr_flash_writer_finish flushes this buffer
 and pads to make up double word with 0xFF.
 Erases as many pages as needed to write "len" bytes from "address"
