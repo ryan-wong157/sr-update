@@ -7,7 +7,7 @@
 #include "uds/srv_download.h"
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
-#include "config/uds_config.h"
+#include "common_config/uds_config.h"
 
 // tx and rx buffers used by isotp layer to put stuff in
 static uint8_t isotp_tx_buf[CFG_UDS_TX_BUF_SIZE];
@@ -15,9 +15,8 @@ static uint8_t isotp_rx_buf[CFG_UDS_RX_BUF_SIZE];
 
 static sr_errno_t uds_dispatch(uint32_t length);
 
-sr_errno_t sr_uds_server_start(FDCAN_HandleTypeDef* hfdcan) {
+sr_errno_t sr_uds_server_start() {
     sr_errno_t retval = sr_isotp_start(
-        hfdcan, 
         ISOTP_FORMAT_NORMAL, 
         isotp_tx_buf, 
         sizeof(isotp_tx_buf), 
@@ -51,12 +50,6 @@ sr_errno_t sr_uds_server_start(FDCAN_HandleTypeDef* hfdcan) {
                 break;
 
             default:
-                for (int i = 0; i < 5; i++) {
-                    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-                    HAL_Delay(1000);
-                    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-                    HAL_Delay(1000);
-                }
                 return retval;
         }
     }
