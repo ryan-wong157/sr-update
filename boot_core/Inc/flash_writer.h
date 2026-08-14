@@ -1,9 +1,8 @@
 #ifndef FLASH_WRITER_H
 #define FLASH_WRITER_H
 
-#include "main.h"
-#include "sr_errno.h"
 #include <stdint.h>
+#include "sr_errno.h"
 
 /**
  * @brief Begins a new flash write session starting at start_address.

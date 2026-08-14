@@ -1,10 +1,9 @@
 #ifndef FLASH_DRIVER_H
 #define FLASH_DRIVER_H
 
-#include "main.h"
+#include <stdint.h>
 #include "sr_errno.h"
 #include "config/flash_config.h"
-#include <stdint.h>
 
 /**
  * @brief Writes a 64 bit value into flash at "address"

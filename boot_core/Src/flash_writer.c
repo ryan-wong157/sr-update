@@ -3,8 +3,9 @@
 // can write an arbitrary amount of data at an address without worrying about
 // flash page/doubleword stuff.
 
-#include "drivers/flash_writer.h"
-#include "drivers/flash_driver.h"
+#include <stdint.h>
+#include "flash_writer.h"
+#include "mcu_interface/flash_driver.h"
 #include "config/flash_config.h"
 
 static uint32_t session_active;

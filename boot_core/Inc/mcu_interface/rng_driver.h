@@ -1,7 +1,7 @@
 #ifndef RNG_DRIVER_H
 #define RNG_DRIVER_H
 
-#include "main.h"
+#include<stdint.h>
 #include "sr_errno.h"
 
 // legit completely unecessary but isolates the user of rng from the HAL
