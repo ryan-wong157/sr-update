@@ -1,7 +1,7 @@
 #include <string.h>
 #include "isotp/isotp.h"
 #include "mcu_interface/can_driver.h"
-#include "mcu_interface/dwt.h"
+#include "mcu_interface/sys_misc.h"
 #include "sr_errno.h"
 
 // TODO: CHANGE
@@ -40,7 +40,7 @@ sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t
     }
 
     isotp_session_init(&isotp_session, frame_format, tx_buf, tx_len, rx_buf, rx_len);
-    sr_dwt_init();
+    sr_counter_start();
 
     isotp_session.callback_transmission_rx = rx_done_callback;
     isotp_session.callback_entire_tx_done = tx_done_callback;
@@ -59,12 +59,11 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
         isotp_session_idle(&isotp_session);
         return ERR_ISOTP_TX_LEN;
     }
-    // For tx timing requirements. Store in number of clock cycles instead of time
-    uint32_t cycles_per_us = SystemCoreClock / 1000000U;
-    uint32_t req_separation_cycls = 0;
-    uint32_t last_send_cycl = 0;
-    uint32_t timeout_start_cycl = sr_cyccnt();
-    uint32_t timeout_cycls = CFG_ISOTP_TIMEOUT_MS * 1000U * cycles_per_us;
+    // For tx timing requirements
+    uint32_t req_separation_us = 0;
+    uint32_t last_send_us = 0;
+    uint32_t timeout_start_us = sr_micros();
+    uint32_t timeout_us = CFG_ISOTP_TIMEOUT_MS * 1000U;
     tx_done_flag = 0;
 
     while (!tx_done_flag) {
@@ -73,14 +72,13 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
             last_err = SR_OK;
             return retval;
         }
-        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+        if (sr_micros() - timeout_start_us >= timeout_us) {
             isotp_session_idle(&isotp_session);
             return ERR_ISOTP_TIMEOUT;
         }
-        if (sr_cyccnt() - last_send_cycl >= req_separation_cycls) {
+        if (sr_micros() - last_send_us >= req_separation_us) {
             // TEMP: 8 BYTES MAX FOR NOW (change to 64 later for fd can)
             uint8_t send_buf[8];
-            uint32_t req_separation_us;
             size_t single_len = isotp_session_can_tx(&isotp_session, send_buf, sizeof(send_buf), &req_separation_us);
             if (single_len > 0) {
                 sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, send_buf, single_len);
@@ -88,9 +86,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
                     isotp_session_idle(&isotp_session);
                     return retval;
                 }
-                last_send_cycl = sr_cyccnt();
-                timeout_start_cycl = last_send_cycl;
-                req_separation_cycls = req_separation_us * cycles_per_us;
+                last_send_us = sr_micros();
+                timeout_start_us = last_send_us;
             }
         }
         // separation time not met, keep trying
@@ -103,16 +100,15 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
 // Note: rx_done_flag being set STOPS the CAN ISR from touching the receive buffer.
 // This means a single frame msg will be waiting to be claimed, but multi-frame will timeout on client side
 sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
-    uint32_t cycles_per_us = SystemCoreClock / 1000000U;
-    uint32_t timeout_start_cycl = sr_cyccnt();
-    uint32_t timeout_cycls = CFG_ISOTP_TIMEOUT_MS * 1000U * cycles_per_us;
+    uint32_t timeout_start_us = sr_micros();
+    uint32_t timeout_us = CFG_ISOTP_TIMEOUT_MS * 1000U;
     while (!rx_done_flag) {
         if (last_err != SR_OK) {
             sr_errno_t retval = last_err;
             last_err = SR_OK;
             return retval;
         }
-        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+        if (sr_micros() - timeout_start_us >= timeout_us) {
             isotp_session_idle(&isotp_session);
             return ERR_ISOTP_TIMEOUT;
         }
@@ -126,7 +122,7 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
                 isotp_session_idle(&isotp_session);
                 return retval;
             }
-            timeout_start_cycl = sr_cyccnt();
+            timeout_start_us = sr_micros();
         }
     }
 
