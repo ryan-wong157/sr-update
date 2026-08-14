@@ -9,10 +9,9 @@
 /**
  * @brief Starts rng peripheral
  * 
- * @param hrng - handle
  * @return sr_errno_t 
  */
-sr_errno_t sr_rng_start(RNG_HandleTypeDef* hrng);
+sr_errno_t sr_rng_start();
 
 /**
  * @brief Generates 32 bit random number. If peripheral fails, generate pseudo random number

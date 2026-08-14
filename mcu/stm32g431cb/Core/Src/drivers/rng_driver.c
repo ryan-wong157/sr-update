@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include "main.h"
+#include "rng.h"
 #include "mcu_interface/rng_driver.h"
 
-static RNG_HandleTypeDef* my_hrng = &hrng1;
+static RNG_HandleTypeDef* my_hrng = &hrng;
 
 sr_errno_t sr_rng_start() {
     my_hrng = hrng;
