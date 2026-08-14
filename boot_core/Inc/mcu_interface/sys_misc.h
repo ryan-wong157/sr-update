@@ -9,6 +9,9 @@ void sr_counter_start();
 // return cycle count
 uint32_t sr_cyccnt();
 
+// return microseconds elapsed since counter start
+uint32_t sr_micros();
+
 // return millis count since start
 uint32_t sr_millis();
 

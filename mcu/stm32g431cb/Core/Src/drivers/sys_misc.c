@@ -16,6 +16,10 @@ uint32_t sr_cyccnt() {
     return DWT->CYCCNT;
 }
 
+uint32_t sr_micros() {
+    return DWT->CYCCNT / (SystemCoreClock / 1000000U);
+}
+
 uint32_t sr_millis() {
     return HAL_GetTick();
 }
