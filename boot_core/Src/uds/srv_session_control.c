@@ -5,7 +5,7 @@
 #include "uds/srv_download.h"
 #include "isotp/isotp.h"
 #include "mcu_interface/sys_misc.h"
-#include "config/uds_config.h"
+#include "common_config/uds_config.h"
 
 static session_state_t session_state = SESSION_DEFAULT;
 static uint32_t s3_deadline = 0;

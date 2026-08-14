@@ -5,7 +5,7 @@
 #include "uds/srv_session_control.h"
 #include "isotp/isotp.h"
 #include "mcu_interface/rng_driver.h"
-#include "config/uds_config.h"
+#include "common_config/uds_config.h"
 
 // globals for 0x27 state
 static security_access_t security_access = SECURITY_LOCKED;

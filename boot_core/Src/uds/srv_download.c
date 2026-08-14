@@ -3,9 +3,8 @@
 #include "uds/srv_session_control.h"
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
-#include "config/uds_config.h"
-#include "config/flash_config.h"
-#include "drivers/flash_writer.h"
+#include "common_config/uds_config.h"
+#include "mcu_interface/flash_writer.h"
 
 static download_state_t curr_state = DOWNLOAD_IDLE;
 static uint32_t num_bytes_to_download = 0;
@@ -50,11 +49,11 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         mem_size = (mem_size << 8) | rx_buf[index_offset + i];
     }
     num_bytes_to_download = mem_size;
-    if (num_bytes_to_download == 0 || num_bytes_to_download > FW_SLOT_SIZE_BYTES) {
+    if (num_bytes_to_download == 0 || num_bytes_to_download > sr_flash_get_slot_capacity(FLASH_SLOT_B)) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
-    if (sr_flash_writer_begin(FW_SLOT_B_START_ADDRESS) != SR_OK) {
+    if (sr_flash_writer_begin(FLASH_SLOT_B) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
