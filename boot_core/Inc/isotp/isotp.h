@@ -1,20 +1,19 @@
 #ifndef ISOTP_H
 #define ISOTP_H
 
+#include <stdint.h>
 #include "isotp/isotplib/isotplib.h"
-#include "mcu_interface/can_driver.h"
 
 /**
  * @brief Initialises can fd layer and isotp layer
  *
- * @param frame_format - either ISOTP_FORMAT_NORMAL/FD
  * @param tx_buf - buffer isotp uses to build outgoing frames, owned by caller
  * @param tx_len - size of tx_buf
  * @param rx_buf - buffer isotp uses to build incoming frames, owned by caller
  * @param rx_len - size of rx_buf
  * @return sr_errno_t
  */
-sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len);
+sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len);
 
 /**
  * @brief User should use and re-pass the pointer to tx_buf from above into this function

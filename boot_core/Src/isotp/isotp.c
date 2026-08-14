@@ -3,9 +3,7 @@
 #include "mcu_interface/can_driver.h"
 #include "mcu_interface/sys_misc.h"
 #include "sr_errno.h"
-
-// TODO: CHANGE
-#include "config/can_config.h"
+#include "common_config/isotp_config.h"
 
 static isotp_session_t isotp_session;
 
@@ -26,7 +24,7 @@ static void err_tx_interrupted_by_rx_callback(void* context, const isotp_spec_fr
 // =================================================================================================
 // PUBLIC INTERFACE FUNCS
 // =================================================================================================
-sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len) {
+sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len) {
     sr_errno_t retval;
 
     retval = sr_fdcan_configure();
@@ -39,7 +37,7 @@ sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t
         return retval;
     }
 
-    isotp_session_init(&isotp_session, frame_format, tx_buf, tx_len, rx_buf, rx_len);
+    isotp_session_init(&isotp_session, ISOTP_FORMAT, tx_buf, tx_len, rx_buf, rx_len);
     sr_counter_start();
 
     isotp_session.callback_transmission_rx = rx_done_callback;
