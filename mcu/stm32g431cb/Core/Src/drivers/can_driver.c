@@ -3,8 +3,8 @@
 
 #include "main.h"
 #include "fdcan.h"
-#include "boot_core/Inc/mcu_interface/can_driver.h"
-#include "boot_core/Inc/mcu_interface/dwt.h"
+#include "mcu_interface/can_driver.h"
+#include "mcu_interface/sys_misc.h"
 #include "can_helper.h"
 #include "config/can_config.h"
 
@@ -123,9 +123,8 @@ sr_errno_t sr_fdcan_tx(uint32_t can_id, uint8_t* data, uint32_t length) {
 }
 
 sr_errno_t sr_fdcan_tx_blocking(uint32_t can_id, uint8_t* data, uint32_t length) {
-    uint32_t cycles_per_us = SystemCoreClock / 1000000U;
-    uint32_t timeout_start_cycl = sr_cyccnt();
-    uint32_t timeout_cycls = CFG_FDCAN_TIMEOUT_MS * 1000 * cycles_per_us;
+    uint32_t timeout_start_ms = sr_millis();
+    uint32_t timeout_ms = CFG_FDCAN_TIMEOUT_MS;
     sr_errno_t retval = sr_fdcan_tx(can_id, data, length);
     if (retval != SR_OK) {
         return retval;
@@ -133,7 +132,7 @@ sr_errno_t sr_fdcan_tx_blocking(uint32_t can_id, uint8_t* data, uint32_t length)
     // FIFO holds 3 messages max
     while (HAL_FDCAN_GetTxFifoFreeLevel(peripheral_handle) < 3) {
         // do nothing
-        if (sr_cyccnt() - timeout_start_cycl >= timeout_cycls) {
+        if (sr_millis() - timeout_start_ms >= timeout_ms) {
             return ERR_FDCAN_TIMEOUT;
         }
     }

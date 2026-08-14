@@ -3,7 +3,7 @@
 #include "config/can_config.h"
 
 // external
-#include "boot_core/Inc/isotp/isotp.h"
+#include "isotp/isotp.h"
 
 // =================================================================================================
 // INTERRUPT SERVICE ROUTINES
