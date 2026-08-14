@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include "sr_errno.h"
-#include "config/flash_config.h"
 
 /**
  * @brief Writes a 64 bit value into flash at "address"

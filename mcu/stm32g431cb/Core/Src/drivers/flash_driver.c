@@ -1,7 +1,9 @@
 // Flash driver functions for stm32G431CB
 // Written by Ryan Wong
 
-#include "drivers/flash_driver.h"
+#include "main.h"
+#include "mcu_interface/flash_driver.h"
+#include "config/flash_config.h"
 
 sr_errno_t sr_flash_write64(uint32_t address, uint64_t data) {
     HAL_StatusTypeDef retval;
