@@ -1,14 +1,12 @@
 #ifndef ISOTP_H
 #define ISOTP_H
 
-#include "main.h"
-#include "isotplib.h"
-#include "drivers/can_driver.h"
+#include "isotp/isotplib/isotplib.h"
+#include "mcu_interface/can_driver.h"
 
 /**
- * @brief Initialises and configures fd-can driver layer, starts fd-can periperhal.
+ * @brief Initialises can fd layer and isotp layer
  *
- * @param hfdcan - HAL handle, must already be HAL-initialised (MX_FDCANx_Init) but not yet started
  * @param frame_format - either ISOTP_FORMAT_NORMAL/FD
  * @param tx_buf - buffer isotp uses to build outgoing frames, owned by caller
  * @param tx_len - size of tx_buf
@@ -16,7 +14,7 @@
  * @param rx_len - size of rx_buf
  * @return sr_errno_t
  */
-sr_errno_t sr_isotp_start(FDCAN_HandleTypeDef* hfdcan, isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len);
+sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len);
 
 /**
  * @brief User should use and re-pass the pointer to tx_buf from above into this function

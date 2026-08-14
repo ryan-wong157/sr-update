@@ -1,12 +1,13 @@
 #include <string.h>
 #include "isotp/isotp.h"
-#include "drivers/dwt.h"
+#include "mcu_interface/can_driver.h"
+#include "mcu_interface/dwt.h"
 #include "sr_errno.h"
+
+// TODO: CHANGE
 #include "config/can_config.h"
 
-// own 1 session and 1 can peripheral
 static isotp_session_t isotp_session;
-static sr_fdcan_handle_t fdcan_handle;
 
 static volatile sr_errno_t last_err = SR_OK;
 static volatile uint8_t rx_done_flag = 0; // 0 no, 1 yes
@@ -25,19 +26,17 @@ static void err_tx_interrupted_by_rx_callback(void* context, const isotp_spec_fr
 // =================================================================================================
 // PUBLIC INTERFACE FUNCS
 // =================================================================================================
-sr_errno_t sr_isotp_start(FDCAN_HandleTypeDef* hfdcan, isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len) {
+sr_errno_t sr_isotp_start(isotp_format_t frame_format, uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len) {
     sr_errno_t retval;
 
-    retval = sr_fdcan_configure(&fdcan_handle, hfdcan);
+    retval = sr_fdcan_configure();
     if (retval != SR_OK) {
         return retval;
     }
-    retval = sr_fdcan_filter_add(&fdcan_handle, FDCAN_FILTER_RANGE, FDCAN_FILTER_TO_RXFIFO0, CFG_ISOTP_RX_ID, CFG_ISOTP_RX_ID);
+
+    retval = sr_fdcan_start();
     if (retval != SR_OK) {
         return retval;
-    }
-    if (HAL_FDCAN_Start(hfdcan) != HAL_OK) {
-        return ERR_FDCAN_START;
     }
 
     isotp_session_init(&isotp_session, frame_format, tx_buf, tx_len, rx_buf, rx_len);
@@ -84,7 +83,7 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
             uint32_t req_separation_us;
             size_t single_len = isotp_session_can_tx(&isotp_session, send_buf, sizeof(send_buf), &req_separation_us);
             if (single_len > 0) {
-                sr_errno_t retval = sr_fdcan_tx_blocking(&fdcan_handle, CFG_ISOTP_TX_ID, send_buf, single_len);
+                sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, send_buf, single_len);
                 if (retval != SR_OK) {
                     isotp_session_idle(&isotp_session);
                     return retval;
@@ -122,7 +121,7 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
         uint8_t frame[8];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
         if (n > 0) {
-            sr_errno_t retval = sr_fdcan_tx_blocking(&fdcan_handle, CFG_ISOTP_TX_ID, frame, n);
+            sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, frame, n);
             if (retval != SR_OK) {
                 isotp_session_idle(&isotp_session);
                 return retval;
