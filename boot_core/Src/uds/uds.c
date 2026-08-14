@@ -17,7 +17,6 @@ static sr_errno_t uds_dispatch(uint32_t length);
 
 sr_errno_t sr_uds_server_start() {
     sr_errno_t retval = sr_isotp_start(
-        ISOTP_FORMAT_NORMAL, 
         isotp_tx_buf, 
         sizeof(isotp_tx_buf), 
         isotp_rx_buf, 
