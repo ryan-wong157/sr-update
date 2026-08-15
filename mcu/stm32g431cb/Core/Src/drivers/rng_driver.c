@@ -6,8 +6,7 @@
 static RNG_HandleTypeDef* my_hrng = &hrng;
 
 sr_errno_t sr_rng_start() {
-    my_hrng = hrng;
-    if (HAL_RNG_Init(hrng) != HAL_OK) {
+    if (HAL_RNG_Init(my_hrng) != HAL_OK) {
         return ERR_RNG_FAIL_START;
     }
     return SR_OK;

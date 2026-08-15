@@ -99,7 +99,7 @@ sr_errno_t sr_fdcan_start() {
 }
 
 sr_errno_t sr_fdcan_tx(uint32_t can_id, uint8_t* data, uint32_t length) {
-    uint32_t dlc = sr_fdcan_bytes_to_dlc(length);
+    uint32_t dlc = bytes_to_dlc(length);
     if (dlc == UINT32_MAX || (fdcan_data.tx_frame_format == FDCAN_CLASSIC_CAN && dlc > FDCAN_DLC_BYTES_8)) {
         return ERR_FDCAN_TX_MSG_TOO_BIG;
     }
