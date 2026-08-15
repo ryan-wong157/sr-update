@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 # ECU config cmake stuff =================================================
 if(NOT ECU)
-    message(FATAL_ERROR "No ECU specified. Configure with -DECU=<name>, e.g. -DECU=ecu_front (see ecus/*.cmake for available ECUs)")
+    message(FATAL_ERROR "No ECU specified. Configure with -DECU=<name>, e.g. -DECU=pedalbox (see ecus/*.cmake for available ECUs)")
 endif()
 
 set(ECU_DEF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ecus/${ECU}.cmake")
