@@ -1,30 +1,32 @@
 // Flash driver functions for stm32G431CB
 // Written by Ryan Wong
 
+#include <string.h>
 #include "main.h"
 #include "mcu_interface/flash_driver.h"
 #include "config/flash_config.h"
 
-sr_errno_t sr_flash_write64(uint32_t address, uint64_t data) {
+sr_errno_t sr_flash_write(uint32_t address, const uint8_t* data) {
     HAL_StatusTypeDef retval;
-    
+    uint64_t doubleword;
+    memcpy(&doubleword, data, FLASH_WRITE_GRANULARITY_BYTES);
+
     retval = HAL_FLASH_Unlock();
     if (retval != HAL_OK) {
         return ERR_FLASH_UNLOCK;
     }
-    
+
     // need to clear error flags to prevent previous errors from affecting current write
     __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
 
-    retval = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data);
+    retval = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, doubleword);
     if (retval != HAL_OK) {
         HAL_FLASH_Lock();
         return ERR_FLASH_WRITE;
     }
 
     // readback check
-    uint64_t readback_value = *(volatile uint64_t *)address;
-    if (readback_value != data) {
+    if (memcmp((const void*)address, data, FLASH_WRITE_GRANULARITY_BYTES) != 0) {
         HAL_FLASH_Lock();
         return ERR_FLASH_READBACK;
     }

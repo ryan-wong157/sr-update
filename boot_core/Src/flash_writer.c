@@ -1,46 +1,19 @@
-// Flash write session layer sitting above flash_driver.
-// Handles page-erase-once-per-page tracking and doubleword buffering so callers
-// can write an arbitrary amount of data to a flash slot without worrying about
-// flash page/doubleword stuff.
+// Flash write session layer sitting above the mcu-provided flash_driver.
+// Handles page-erase-once-per-page tracking and write-granularity buffering so callers
+// can write an arbitrary amount of data at an address without worrying about
+// flash page/write-granularity stuff. Generic across any MCU's write granularity
+// and page size, as declared by mcu_interface/flash_driver.h.
 
-#include <stddef.h>
-#include "mcu_interface/flash_writer.h"
+#include <string.h>
+#include "flash_writer.h"
 #include "mcu_interface/flash_driver.h"
-#include "config/flash_config.h"
 
 static uint32_t session_active;
 static uint32_t next_write_addr;
 static uint32_t current_bank;
 static uint32_t current_page;
-static uint8_t carry[8];
-static uint8_t carry_len;
-
-static sr_errno_t slot_to_address(flash_slot_t slot, uint32_t* address) {
-    switch (slot) {
-        case FLASH_SLOT_A:
-            *address = FW_SLOT_A_START_ADDRESS;
-            return SR_OK;
-        case FLASH_SLOT_B:
-            *address = FW_SLOT_B_START_ADDRESS;
-            return SR_OK;
-        default:
-            return ERR_FLASH_INVALID_INPUT;
-    }
-}
-
-uint32_t sr_flash_get_slot_capacity(flash_slot_t slot) {
-    (void)slot;
-    return FW_SLOT_SIZE_BYTES;
-}
-
-static uint64_t pack_doubleword(const uint8_t* bytes) {
-    // relies on little endian Cortex-M byte order: bytes[0] (lowest address)
-    uint64_t value = 0;
-    for (int i = 0; i < 8; i++) {
-        value |= ((uint64_t)bytes[i]) << (8 * i);
-    }
-    return value;
-}
+static uint8_t carry[FLASH_WRITE_GRANULARITY_BYTES];
+static uint32_t carry_len;
 
 // erases every not-yet-erased page from the current erase position up to
 // and including the page containing (address + total_len - 1)
@@ -77,16 +50,10 @@ static sr_errno_t erase_up_to(uint32_t address, uint32_t total_len) {
     return SR_OK;
 }
 
-sr_errno_t sr_flash_writer_begin(flash_slot_t slot) {
-    uint32_t start_address;
-    sr_errno_t err = slot_to_address(slot, &start_address);
-    if (err != SR_OK) {
-        return err;
-    }
-
+sr_errno_t sr_flash_writer_begin(uint32_t start_address) {
     uint32_t bank;
     uint32_t page;
-    err = sr_flash_get_page_info(start_address, &bank, &page);
+    sr_errno_t err = sr_flash_get_page_info(start_address, &bank, &page);
     if (err != SR_OK) {
         return err;
     }
@@ -110,10 +77,10 @@ sr_errno_t sr_flash_writer_begin(flash_slot_t slot) {
 }
 
 /*
-Does a thing where if len is not doubleword (8 byte) aligned, the leftover bytes are buffered
-then prepended into the next double word write. If it's last write, then sr_flash_writer_finish flushes this buffer
-and pads to make up double word with 0xFF.
-Erases as many pages as needed to write "len" bytes from "address"
+Does a thing where if len is not write-granularity aligned, the leftover bytes are buffered
+then prepended into the next granularity-sized write. If it's the last write,
+sr_flash_writer_finish flushes this buffer and pads with 0xFF.
+Erases as many pages as needed to write "len" bytes from the current write cursor.
 */
 sr_errno_t sr_flash_writer_write(const uint8_t* data, uint32_t len) {
     if (!session_active) {
@@ -126,29 +93,27 @@ sr_errno_t sr_flash_writer_write(const uint8_t* data, uint32_t len) {
     }
 
     uint32_t data_index = 0;
-    // while amt of bytes to write >= doubleword
-    while (carry_len + (len - data_index) >= 8) {
-        uint8_t doubleword[8];
+    // while amt of bytes to write >= write granularity
+    while (carry_len + (len - data_index) >= FLASH_WRITE_GRANULARITY_BYTES) {
+        uint8_t chunk[FLASH_WRITE_GRANULARITY_BYTES];
 
         // handle prepending buffered carry bytes if any
-        uint8_t from_carry = carry_len;
-        for (uint8_t i = 0; i < from_carry; i++) {
-            doubleword[i] = carry[i];
-        }
-        for (uint8_t i = from_carry; i < 8; i++) {
-            doubleword[i] = data[data_index++];
+        uint32_t from_carry = carry_len;
+        memcpy(chunk, carry, from_carry);
+        for (uint32_t i = from_carry; i < FLASH_WRITE_GRANULARITY_BYTES; i++) {
+            chunk[i] = data[data_index++];
         }
 
-        err = sr_flash_write64(next_write_addr, pack_doubleword(doubleword));
+        err = sr_flash_write(next_write_addr, chunk);
         if (err != SR_OK) {
             return err;
         }
 
-        next_write_addr += 8;
+        next_write_addr += FLASH_WRITE_GRANULARITY_BYTES;
         carry_len = 0;
     }
 
-    // add leftover <8 bytes to carry buffer
+    // add leftover bytes (< write granularity) to carry buffer
     for (uint32_t i = data_index; i < len; i++) {
         carry[carry_len++] = data[i];
     }
@@ -163,12 +128,12 @@ sr_errno_t sr_flash_writer_finish(void) {
 
     sr_errno_t err = SR_OK;
     if (carry_len > 0) {
-        for (uint8_t i = carry_len; i < 8; i++) {
+        for (uint32_t i = carry_len; i < FLASH_WRITE_GRANULARITY_BYTES; i++) {
             carry[i] = 0xFF;
         }
-        err = sr_flash_write64(next_write_addr, pack_doubleword(carry));
+        err = sr_flash_write(next_write_addr, carry);
         if (err == SR_OK) {
-            next_write_addr += 8;
+            next_write_addr += FLASH_WRITE_GRANULARITY_BYTES;
         }
     }
 

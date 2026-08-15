@@ -9,6 +9,9 @@
 #define FLASH_BEGIN_ADDRESS 0x08000000U
 #define FLASH_END_ADDRESS 0x0801FFFFU
 
+// STM32g4 is 64 bit writes minimum
+#define FLASH_WRITE_GRANULARITY_BYTES 8U
+
 // flash regions
 #define BOOTLOADER_SIZE_BYTES 0x5000U // 20 KB, pages 0-9
 #define FW_SLOT_SIZE_BYTES 0xD800U // 54 KB, 27 pages each
