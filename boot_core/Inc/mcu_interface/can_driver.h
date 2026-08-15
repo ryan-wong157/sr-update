@@ -2,7 +2,7 @@
 #define CAN_DRIVER_H
 
 #include <stdint.h>
-#include "boot_core/Inc/sr_errno.h"
+#include "sr_errno.h"
 
 // =================================================================================================
 // Functions

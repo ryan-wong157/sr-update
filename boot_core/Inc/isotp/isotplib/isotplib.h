@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "isotp_session.h"
+#include "isotp/isotplib/isotp_session.h"
 
 #define ISOTPLIB_VERSION_MAJOR         1
 #define ISOTPLIB_VERSION_MINOR         1

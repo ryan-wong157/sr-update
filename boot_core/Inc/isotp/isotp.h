@@ -2,6 +2,8 @@
 #define ISOTP_H
 
 #include <stdint.h>
+#include <stddef.h>
+#include "sr_errno.h"
 #include "isotp/isotplib/isotplib.h"
 
 /**

@@ -5,6 +5,7 @@
 #include "uds/srv_session_control.h"
 #include "isotp/isotp.h"
 #include "mcu_interface/rng_driver.h"
+#include "mcu_interface/sys_misc.h"
 #include "common_config/uds_config.h"
 
 // globals for 0x27 state

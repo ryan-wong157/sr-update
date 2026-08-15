@@ -7,7 +7,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "isotp_specification.h"
+#include "isotp/isotplib/isotp_specification.h"
 
 // ISO-TP session states
 typedef enum {
