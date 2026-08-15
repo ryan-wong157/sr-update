@@ -20,6 +20,12 @@ if(NOT EXISTS "${ECU_MCU_DIR}")
     message(FATAL_ERROR "Unknown ECU_MCU '${ECU_MCU}': ${ECU_MCU_DIR} does not exist")
 endif()
 
+# Every MCU port must provide its toolchain file at this fixed path.
+set(CMAKE_TOOLCHAIN_FILE "${ECU_MCU_DIR}/cmake/gcc-arm-none-eabi.cmake")
+if(NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
+    message(FATAL_ERROR "MCU '${ECU_MCU}' is missing its toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+endif()
+
 
 # Actual build stuff =================================================
 # Binary name is derived from the ECU + MCU combination, e.g. ecu_front_stm32g431cb
