@@ -21,13 +21,15 @@ void sr_reset_mcu();
 
 // These two functions handle accessing the persistent value which tells the bootloader to 
 // wait in UDS server for new firmware rather than jumping to app
+
 // boot_magic = 0xB007C0DE -> hold in bootloader
 // boot_magic != 0xB007C0DE -> boot regularly
+#define BOOT_HOLD_MAGIC 0xB007C0DE
 
 // write to backup reg
 sr_errno_t sr_write_boot_magic();
 
 // read from backup reg
-sr_errno_t sr_read_boot_magic();
+sr_errno_t sr_read_boot_magic(uint32_t* data);
 
 #endif

@@ -4,7 +4,10 @@
 // Adapted by Ryan Wong
 
 #include "main.h"
+#include "rtc.h"
 #include "mcu_interface/sys_misc.h"
+
+static RTC_HandleTypeDef* rtc_handle = &hrtc;
 
 void sr_counter_start() {
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -26,4 +29,14 @@ uint32_t sr_millis() {
 
 void sr_reset_mcu() {
     HAL_NVIC_SystemReset();
+}
+
+sr_errno_t sr_write_boot_magic() {
+    HAL_PWR_EnableBkUpAccess();
+    HAL_RTCEx_BKUPWrite(rtc_handle, RTC_BKP_DR0, (uint32_t)BOOT_HOLD_MAGIC);
+    HAL_PWR_DisableBkUpAccess();
+}
+
+sr_errno_t sr_read_boot_magic(uint32_t* data) {
+    return HAL_RTCEx_BKUPRead(rtc_handle, RTC_BKP_DR0);
 }
