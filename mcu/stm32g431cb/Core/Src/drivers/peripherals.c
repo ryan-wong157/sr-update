@@ -17,5 +17,6 @@ sr_errno_t sr_peripherals_init(void) {
     MX_GPIO_Init();
     MX_FDCAN1_Init();
     MX_RNG_Init();
+    MX_RTC_Init();
     return SR_OK;
 }
