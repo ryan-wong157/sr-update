@@ -27,9 +27,9 @@ void sr_reset_mcu();
 #define BOOT_HOLD_MAGIC 0xB007C0DE
 
 // write to backup reg
-sr_errno_t sr_write_boot_magic();
+void sr_write_boot_magic(uint32_t data);
 
 // read from backup reg
-sr_errno_t sr_read_boot_magic(uint32_t* data);
+uint32_t sr_read_boot_magic();
 
 #endif

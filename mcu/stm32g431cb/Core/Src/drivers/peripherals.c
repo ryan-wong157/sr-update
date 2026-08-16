@@ -6,6 +6,7 @@
 #include "gpio.h"
 #include "fdcan.h"
 #include "rng.h"
+#include "rtc.h"
 #include "mcu_interface/peripherals.h"
 
 // Defined in the CubeMX-generated Core/Src/main.c but not declared in main.h

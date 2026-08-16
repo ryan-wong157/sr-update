@@ -31,12 +31,12 @@ void sr_reset_mcu() {
     HAL_NVIC_SystemReset();
 }
 
-sr_errno_t sr_write_boot_magic() {
+void sr_write_boot_magic(uint32_t data) {
     HAL_PWR_EnableBkUpAccess();
-    HAL_RTCEx_BKUPWrite(rtc_handle, RTC_BKP_DR0, (uint32_t)BOOT_HOLD_MAGIC);
+    HAL_RTCEx_BKUPWrite(rtc_handle, RTC_BKP_DR0, data);
     HAL_PWR_DisableBkUpAccess();
 }
 
-sr_errno_t sr_read_boot_magic(uint32_t* data) {
+uint32_t sr_read_boot_magic() {
     return HAL_RTCEx_BKUPRead(rtc_handle, RTC_BKP_DR0);
 }
