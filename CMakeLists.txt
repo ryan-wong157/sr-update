@@ -17,7 +17,7 @@ endif()
 
 set(ECU_MCU_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mcu/${ECU_MCU}")
 if(NOT EXISTS "${ECU_MCU_DIR}")
-    message(FATAL_ERROR "Unknown ECU_MCU '${ECU_MCU}': ${ECU_MCU_DIR} does not exist")
+    message(FATAL_ERROR "Unknown MCU '${ECU_MCU}': ${ECU_MCU_DIR} does not exist")
 endif()
 
 # Every MCU port must provide its toolchain file at this fixed path.
