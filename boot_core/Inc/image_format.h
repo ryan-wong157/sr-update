@@ -24,7 +24,7 @@ typedef struct __attribute__((packed)) {
     image_version_t ih_img_ver;
 } image_header_t;
 
-// TLV structures =================================================================
+// TLV structures ====================================================================
 #define IMAGE_TLV_INFO_MAGIC 0x6907
 #define IMAGE_TLV_SHA256 0x01
 #define IMAGE_TLV_ED25519_SIG 0x02
