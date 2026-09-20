@@ -27,10 +27,10 @@
 #define TRAILER_SIZE_BYTES sizeof(image_trailer_t)
 #define FW_MAX_IMAGE_SIZE_BYTES (FW_SLOT_SIZE_BYTES - TRAILER_SIZE_BYTES)
 static const uint32_t trailer_magic_const[4] = {
-    0xf395c277,
-    0x7fefd260,
-    0x0f505235,
-    0x8079b62c,
+    0x56951c69,
+    0x1edffec5,
+    0x0cdfc748,
+    0xd6056ce4,
 };
 
 // 8 byte aligned
