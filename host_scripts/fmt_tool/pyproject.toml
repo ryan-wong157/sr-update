@@ -1,0 +1,19 @@
+[project]
+name = "fmt-tool"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ryan Wong", email = "wongrt0502@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=50.0.1",
+]
+
+[project.scripts]
+fmt-tool = "fmt_tool.main:main"
+
+[build-system]
+requires = ["uv_build>=0.11.27,<0.12.0"]
+build-backend = "uv_build"
