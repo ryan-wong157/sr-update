@@ -5,9 +5,33 @@
 
 #include "main.h"
 #include "rtc.h"
+#include "flash_config.h"
 #include "mcu_interface/sys_misc.h"
 
 static RTC_HandleTypeDef* rtc_handle = &hrtc;
+
+void jump_to_app(uint32_t app_start) {
+    // get MSP
+    uint32_t msp = *(volatile uint32_t*)app_start;
+
+    // function pointer to reset handler
+    void (*app_reset_handler)(void);
+    app_reset_handler = (void (*)(void))(*(volatile uint32_t*)(app_start + 4));
+
+    // need to disable irqs before jumping and setting msp
+    __disable_irq();
+
+    // stop systick timer from firing
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL = 0;
+
+    // set new MSP
+    __set_MSP(msp);
+
+    // jump!
+    app_reset_handler();
+}
 
 void sr_counter_start() {
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;

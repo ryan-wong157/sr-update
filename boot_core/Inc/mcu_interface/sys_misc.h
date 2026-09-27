@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include "sr_errno.h"
 
+// Must disable IRQs, then jump to Reset Handler for slot 1
+// app start is the very first byte address of the actual binary payload, after the image header
+void jump_to_app(uint32_t app_start);
+
 // start a cycle counter
 void sr_counter_start();
 
