@@ -5,7 +5,7 @@
 
 #include "main.h"
 #include "rtc.h"
-#include "flash_config.h"
+#include "config/flash_config.h"
 #include "mcu_interface/sys_misc.h"
 
 static RTC_HandleTypeDef* rtc_handle = &hrtc;
