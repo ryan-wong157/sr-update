@@ -5,13 +5,6 @@
 #include "bootloader_version.h"
 #include "common_config/uds_config.h"
 
-// ECU_ID is the "ECU Hardware ID" (pedalbox, drive UEN etc), defined per-ECU via cmake.
-// 12 bits!!!! (4 MSB should be 0)
-#ifndef ECU_ID
-#error "ECU_ID must be defined via cmake -DECU=<name>"
-#endif
-_Static_assert(ECU_ID <= 0xFFF, "ECU_ID must fit in 12 bits (0x000 - 0xFFF)");
-
 sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length < 3 || !(rx_length % 2)) {
         return uds_send_nrc(tx_buf, SID_READ_DATA_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);

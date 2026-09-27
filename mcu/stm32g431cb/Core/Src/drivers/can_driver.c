@@ -3,9 +3,10 @@
 
 #include "main.h"
 #include "fdcan.h"
+#include "can_helper.h"
 #include "mcu_interface/can_driver.h"
 #include "mcu_interface/sys_misc.h"
-#include "can_helper.h"
+#include "common_config/isotp_config.h"
 #include "config/can_config.h"
 
 // =================================================================================================
@@ -31,7 +32,7 @@ static fdcan_data_t fdcan_data;
 // =================================================================================================
 static HAL_StatusTypeDef filter_add(uint32_t filter_type, uint32_t filter_config, uint32_t id1, uint32_t id2) {
     HAL_StatusTypeDef ret;
-    uint32_t num_filters = peripheral_handle->Init.StdFiltersNbr;
+    uint32_t num_filters = peripheral_handle->Init.ExtFiltersNbr;
 
     if (fdcan_data.filter_index < num_filters) {
         FDCAN_FilterTypeDef filter = {

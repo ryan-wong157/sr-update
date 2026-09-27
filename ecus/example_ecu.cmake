@@ -2,9 +2,7 @@
 # Which physical MCU this ECU builds against
 set(ECU_MCU stm32g431cb)
 
-# ECU ID and expected isotp CAN IDS
+# ECU ID (ISO-TP Tx/Rx CAN IDs are derived from this)
 set(ECU_COMPILE_DEFS
     ECU_ID=0x10
-    CFG_ISOTP_TX_ID=0x7A0
-    CFG_ISOTP_RX_ID=0x7A8
 )

@@ -52,7 +52,8 @@ cmake --build build/Debug # or Release
 
 `-DECU=<name>` is required in the CMAKE configuration step and must match a file in `ecus/` (e.g for `ecus/example_ecu.cmake` do `-DECU=example_ecu`). The resulting binary is named `<ecu>_<mcu>_bl`, e.g `example_ecu_stm32g431cb_bl.elf`.
 
-The ECU cmake file defines the target MCU and Node ID, ISO-TP CAN IDs
+The ECU cmake file defines the target MCU and ECU ID. ISO-TP Tx/Rx CAN IDs are derived from `ECU_ID`
+(see `boot_core/Inc/common_config/isotp_config.h`).
 
 ```cmake
 # ecus/example_ecu.cmake
@@ -60,8 +61,6 @@ set(ECU_MCU stm32g431cb)
 
 set(ECU_COMPILE_DEFS
     ECU_ID=0x10
-    CFG_ISOTP_TX_ID=0x7A0
-    CFG_ISOTP_RX_ID=0x7A8
 )
 ```
 
