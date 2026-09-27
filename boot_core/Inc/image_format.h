@@ -1,8 +1,8 @@
-#ifndef IMAGE_FORAMT_H
+#ifndef IMAGE_FORMAT_H
 #define IMAGE_FORMAT_H
 
 #include <stdint.h>
-
+#include "config/flash_config.h" // FROM MCU-specific header
 
 // HEADER structures =================================================================
 #define IMAGE_MAGIC 0xb0fe673d
