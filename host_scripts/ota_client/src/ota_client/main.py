@@ -56,7 +56,7 @@ def main():
     args = parse_args()
     auth_key = get_auth_key(args.key_file)
 
-    conn = IsoTPSocketConnection("vcan0", isotp.Address(isotp.AddressingMode.Extended_29bits, rxid=RXID, txid=TXID))
+    conn = IsoTPSocketConnection("can0", isotp.Address(isotp.AddressingMode.Extended_29bits, rxid=RXID, txid=TXID))
     config = configure(auth_key)
     with Client(conn, config) as client:
         conn.send(b'\x80')
