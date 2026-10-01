@@ -36,9 +36,9 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
     }
 
     // retry check
-    if (sr_millis() - timeout_start < CFG_RETRY_TIMEOUT && num_attempts >= 3) {
+    if (sr_millis() - timeout_start < CFG_RETRY_TIMEOUT && num_attempts >= CFG_MAX_x27_ATTEMPTS) {
         return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_TIME_DELAY_NOT_EXPIRED);
-    } else if (sr_millis() - timeout_start >= CFG_RETRY_TIMEOUT && num_attempts >= 3) {
+    } else if (sr_millis() - timeout_start >= CFG_RETRY_TIMEOUT && num_attempts >= CFG_MAX_x27_ATTEMPTS) {
         num_attempts = 0;
     }
 

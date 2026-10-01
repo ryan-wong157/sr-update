@@ -8,11 +8,11 @@ sr_errno_t sr_led_init() {
 }
 
 sr_errno_t sr_led_blink() {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 10; i++) {
         HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-        HAL_Delay(1000);
+        HAL_Delay(100);
         HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-        HAL_Delay(1000);
+        HAL_Delay(100);
     }
     return HAL_OK;
 }

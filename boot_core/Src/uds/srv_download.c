@@ -21,6 +21,9 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_SECURITY_ACCESS_DENIED);
     }
 
+    // A new download request always cancels any download in progress even if it gets rejected
+    reset_programming();
+
     uint8_t data_format_id = rx_buf[1];
     uint8_t address_and_length_format_id = rx_buf[2];
     uint8_t mem_size_len = address_and_length_format_id >> 4;
@@ -49,14 +52,14 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
     for (int i = 0; i < mem_size_len; i++) {
         mem_size = (mem_size << 8) | rx_buf[index_offset + i];
     }
-    num_bytes_to_download = mem_size;
-    if (num_bytes_to_download == 0 || num_bytes_to_download > FW_SLOT_SIZE_BYTES) {
+    if (mem_size == 0 || mem_size > FW_MAX_IMAGE_SIZE_BYTES) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
     if (sr_flash_writer_begin(FW_SLOT_B_START_ADDRESS) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }
+    num_bytes_to_download = mem_size;
 
     // form response
     tx_buf[0] = SID_DOWNLOAD_START_RES;
@@ -85,22 +88,26 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
 
-    if (curr_state == DOWNLOAD_IDLE || num_bytes_to_download == 0) {
+    if (curr_state == DOWNLOAD_IDLE) {
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_REQUEST_SEQUENCE_ERROR);
     }
 
     uint8_t seq_counter = rx_buf[1];
     uint32_t num_bytes_sent = rx_length - 2;
 
-    if (num_bytes_sent > num_bytes_to_download) {
-        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_TRANSFER_DATA_SUSPENDED);
-    }
-
     if (seq_counter == expected_seq_counter - 1) {
-        // already handeled block, but response was lost so client re-tried 
+        // already handeled block, but response was lost so client re-tried
         tx_buf[0] = SID_TRNSFR_DATA_RES;
         tx_buf[1] = seq_counter;
         return sr_isotp_tx(tx_buf, 2);
+    }
+
+    if (num_bytes_to_download == 0) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_REQUEST_SEQUENCE_ERROR);
+    }
+
+    if (num_bytes_sent > num_bytes_to_download) {
+        return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_TRANSFER_DATA_SUSPENDED);
     }
 
     if (seq_counter < expected_seq_counter - 1 || seq_counter > expected_seq_counter) {
@@ -116,6 +123,8 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
 
 
     if (sr_flash_writer_write(&rx_buf[2], num_bytes_sent) != SR_OK) {
+        // if block half written, must fully abort
+        reset_programming();
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
@@ -146,6 +155,9 @@ sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, 
 
     // TODO: CHECK INTEGRITY AND OTHER THINGS.
     // IF FAIL, SEND BACK 0X72 GENERAL PROGRAMMING FAILURE
+
+    curr_state = DOWNLOAD_IDLE;
+    expected_seq_counter = 1;
 
     tx_buf[0] = SID_DOWNLOAD_EXIT_RES;
 

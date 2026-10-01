@@ -30,16 +30,16 @@ sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uin
 sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length);
 
 /**
- * @brief Blocks until a full isotp message has been transferred from the partner into the
- * rx buffer the caller provided to sr_isotp_start.
- * On SR_OK the message is sitting in that buffer and recv_length holds how many bytes are valid (>0 guarantee),
- * The contents stay valid until the next sr_isotp_rx call, which re-arms the CAN ISR to
- * write into the buffer again. So consume/dispatch before calling again.
+ * @brief Blocks until a full isotp message has been transferred from the partner, then copies
+ * it into out_buf.
+ * On SR_OK the message is sitting in out_buf and recv_length holds how many bytes are valid (>0 guarantee).
  *
- * @param recv_length - out, number of bytes of the rx buffer that hold the received message
+ * @param out_buf - buffer the received message is copied into, owned by caller
+ * @param out_len - size of out_buf
+ * @param recv_length - out, number of bytes of out_buf that hold the received message
  * @return sr_errno_t
  */
-sr_errno_t sr_isotp_rx(uint32_t* recv_length);
+sr_errno_t sr_isotp_rx(uint8_t* out_buf, uint32_t out_len, uint32_t* recv_length);
 
 /**
  * @brief function called by can ISR

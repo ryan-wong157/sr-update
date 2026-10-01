@@ -60,8 +60,8 @@ sr_errno_t x10_sess_ctrl_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
     }
 
     // Respond
-    uint16_t p2 = (sfb == SESSION_DEFAULT) ? CFG_DEFAULT_P2_SERVER_MAX : CFG_PROG_P2_SERVER_MAX;
-    uint16_t p2star = (sfb == SESSION_DEFAULT) ? CFG_DEFAULT_P2STAR_SERVER_MAX : CFG_PROG_P2STAR_SERVER_MAX;
+    uint16_t p2 = (sub_function == SESSION_DEFAULT) ? CFG_DEFAULT_P2_SERVER_MAX : CFG_PROG_P2_SERVER_MAX;
+    uint16_t p2star = (sub_function == SESSION_DEFAULT) ? CFG_DEFAULT_P2STAR_SERVER_MAX : CFG_PROG_P2STAR_SERVER_MAX;
 
     tx_buf[0] = SID_SESS_CTRL_RES;
     tx_buf[1] = sfb;

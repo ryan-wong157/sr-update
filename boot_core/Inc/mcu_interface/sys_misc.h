@@ -6,7 +6,7 @@
 
 // Must disable IRQs, then jump to Reset Handler for slot 1
 // app start is the very first byte address of the actual binary payload, after the image header
-void jump_to_app(uint32_t app_start);
+__attribute__((noreturn)) void jump_to_app(uint32_t app_start);
 
 // start a cycle counter
 void sr_counter_start();
@@ -14,8 +14,8 @@ void sr_counter_start();
 // return cycle count
 uint32_t sr_cyccnt();
 
-// return microseconds elapsed since counter start
-uint32_t sr_micros();
+// return microseconds elapsed since start_cyccnt (a value from sr_cyccnt())
+uint32_t sr_micros_since(uint32_t start_cyccnt);
 
 // return millis count since start
 uint32_t sr_millis();

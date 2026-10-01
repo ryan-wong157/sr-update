@@ -21,3 +21,12 @@ sr_errno_t sr_peripherals_init(void) {
     MX_RTC_Init();
     return SR_OK;
 }
+
+sr_errno_t sr_peripherals_deinit(void) {
+    HAL_FDCAN_Stop(&hfdcan1);
+    HAL_FDCAN_DeInit(&hfdcan1);
+    HAL_RNG_DeInit(&hrng);
+    HAL_RTC_DeInit(&hrtc);
+    HAL_DeInit();
+    return SR_OK;
+}

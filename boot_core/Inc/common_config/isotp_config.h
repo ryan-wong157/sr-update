@@ -15,8 +15,7 @@ static const isotp_format_t ISOTP_FORMAT = ISOTP_FORMAT_NORMAL;
 _Static_assert(ECU_ID <= 0xFFF, "ECU_ID must fit in 12 bits (0x000 - 0xFFF)");
 
 // ISO-TP CAN IDs are derived from ECU_ID and are always 29-bit extended IDs.
-// Tx (ECU -> tool):  0x1F<ECU_ID>000, e.g. ECU_ID=0x10  ->  0x1F010000
-// Rx (tool -> ECU):  fixed broadcast address, same for every ECU
+// Priority is 0x1F, msg ID = 000 (according to the Sunswift id scheme)
 #define CFG_ISOTP_TX_ID (0x1F000000u | ((uint32_t)(ECU_ID) << 12))
 #define CFG_ISOTP_RX_ID 0x1F000000u
 

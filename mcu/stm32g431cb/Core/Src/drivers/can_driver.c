@@ -134,6 +134,7 @@ sr_errno_t sr_fdcan_tx_blocking(uint32_t can_id, uint8_t* data, uint32_t length)
     while (HAL_FDCAN_GetTxFifoFreeLevel(peripheral_handle) < 3) {
         // do nothing
         if (sr_millis() - timeout_start_ms >= timeout_ms) {
+            HAL_FDCAN_AbortTxRequest(peripheral_handle, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2);
             return ERR_FDCAN_TIMEOUT;
         }
     }

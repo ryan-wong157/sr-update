@@ -5,8 +5,9 @@
 #include "sr_errno.h"
 
 typedef enum {
-    SESSION_DEFAULT = 0,
-    SESSION_PROGRAMMING
+    // values are the ISO 14229 diagnosticSessionType sub-function values
+    SESSION_DEFAULT = 0x01,
+    SESSION_PROGRAMMING = 0x02
 } session_state_t;
 
 void set_session(session_state_t sesn);

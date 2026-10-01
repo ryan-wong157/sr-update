@@ -52,6 +52,7 @@ sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uin
 }
 
 sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
+    last_err = SR_OK;
     size_t bytes_sent = isotp_session_send(&isotp_session, tx_data, length);
     if (bytes_sent != length) {
         isotp_session_idle(&isotp_session);
@@ -59,8 +60,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
     }
     // For tx timing requirements
     uint32_t req_separation_us = 0;
-    uint32_t last_send_us = 0;
-    uint32_t timeout_start_us = sr_micros();
+    uint32_t last_send_cyc = sr_cyccnt();
+    uint32_t timeout_start_cyc = last_send_cyc;
     uint32_t timeout_us = CFG_ISOTP_TIMEOUT_MS * 1000U;
     tx_done_flag = 0;
 
@@ -70,11 +71,11 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
             last_err = SR_OK;
             return retval;
         }
-        if (sr_micros() - timeout_start_us >= timeout_us) {
+        if (sr_micros_since(timeout_start_cyc) >= timeout_us) {
             isotp_session_idle(&isotp_session);
             return ERR_ISOTP_TIMEOUT;
         }
-        if (sr_micros() - last_send_us >= req_separation_us) {
+        if (sr_micros_since(last_send_cyc) >= req_separation_us) {
             // TEMP: 8 BYTES MAX FOR NOW (change to 64 later for fd can)
             uint8_t send_buf[8];
             size_t single_len = isotp_session_can_tx(&isotp_session, send_buf, sizeof(send_buf), &req_separation_us);
@@ -84,8 +85,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
                     isotp_session_idle(&isotp_session);
                     return retval;
                 }
-                last_send_us = sr_micros();
-                timeout_start_us = last_send_us;
+                last_send_cyc = sr_cyccnt();
+                timeout_start_cyc = last_send_cyc;
             }
         }
         // separation time not met, keep trying
@@ -97,8 +98,8 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
 
 // Note: rx_done_flag being set STOPS the CAN ISR from touching the receive buffer.
 // This means a single frame msg will be waiting to be claimed, but multi-frame will timeout on client side
-sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
-    uint32_t timeout_start_us = sr_micros();
+sr_errno_t sr_isotp_rx(uint8_t* out_buf, uint32_t out_len, uint32_t* recv_length) {
+    uint32_t timeout_start_cyc = sr_cyccnt();
     uint32_t timeout_us = CFG_ISOTP_TIMEOUT_MS * 1000U;
     while (!rx_done_flag) {
         if (last_err != SR_OK) {
@@ -106,7 +107,7 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
             last_err = SR_OK;
             return retval;
         }
-        if (sr_micros() - timeout_start_us >= timeout_us) {
+        if (sr_micros_since(timeout_start_cyc) >= timeout_us) {
             isotp_session_idle(&isotp_session);
             return ERR_ISOTP_TIMEOUT;
         }
@@ -120,7 +121,7 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
                 isotp_session_idle(&isotp_session);
                 return retval;
             }
-            timeout_start_us = sr_micros();
+            timeout_start_cyc = sr_cyccnt();
         }
     }
 
@@ -131,6 +132,13 @@ sr_errno_t sr_isotp_rx(uint32_t* recv_length) {
         return ERR_ISOTP_INVALID_FRAME;
     }
 
+    if (isotp_session.full_transmission_length > out_len) {
+        rx_done_flag = 0;
+        isotp_session_idle(&isotp_session);
+        return ERR_ISOTP_RX_BUFF_TOO_SMALL;
+    }
+
+    memcpy(out_buf, isotp_session.rx_buffer, isotp_session.full_transmission_length);
     *recv_length = isotp_session.full_transmission_length;
     rx_done_flag = 0;
     isotp_session_idle(&isotp_session);

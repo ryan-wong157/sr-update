@@ -14,4 +14,5 @@
  */
 sr_errno_t sr_peripherals_init(void);
 
+sr_errno_t sr_peripherals_deinit(void);
 #endif
