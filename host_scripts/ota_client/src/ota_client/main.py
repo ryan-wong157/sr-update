@@ -56,11 +56,16 @@ def main():
     args = parse_args()
     auth_key = get_auth_key(args.key_file)
 
-    conn = IsoTPSocketConnection("can0", isotp.Address(isotp.AddressingMode.Extended_29bits, rxid=RXID, txid=TXID))
+    try:
+        conn = IsoTPSocketConnection("can0", isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID))
+    except Exception as e:
+        print(f"Failed to open connection: {e}")
+        sys.exit(1)
+
     config = configure(auth_key)
     with Client(conn, config) as client:
         conn.send(b'\x80')
-        resp = conn.wait_frame(timeout=2)
+        resp = conn.wait_frame(timeout=20)
         if resp is not None:
             print(resp.decode())
             
