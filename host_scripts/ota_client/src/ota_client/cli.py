@@ -362,7 +362,7 @@ def main():
         logging.getLogger("UdsClient").setLevel(logging.WARNING)
         logging.getLogger("Connection").setLevel(logging.WARNING)
 
-    conn = IsoTPSocketConnection(args.interface, isotp.Address(isotp.AddressingMode.Extended_29bits, rxid=RXID, txid=TXID))
+    conn = IsoTPSocketConnection(args.interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID))
     config = configure(auth_key)
     with Client(conn, config) as client:
         TestCli(client, conn, keepalive=not args.no_keepalive).run()
