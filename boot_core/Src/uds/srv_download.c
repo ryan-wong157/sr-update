@@ -56,6 +56,13 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
+    // page erase can take most of P2 so tell client to wait
+    sr_errno_t result = uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_RECEIVED_RESPONSE_PENDING);
+    if (result != SR_OK) {
+        // if isotp is cooked, abort
+        return result;
+    }
+
     if (sr_flash_writer_begin(FW_SLOT_B_START_ADDRESS) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }

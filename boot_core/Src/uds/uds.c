@@ -38,6 +38,7 @@ sr_errno_t sr_uds_server_start() {
         switch (retval) {
             case SR_OK:
                 uds_dispatch(bytes_received);
+                s3_refresh();
                 break;
 
             case ERR_ISOTP_TIMEOUT:
