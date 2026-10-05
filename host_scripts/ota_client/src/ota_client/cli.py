@@ -364,6 +364,8 @@ def main():
 
     conn = IsoTPSocketConnection(args.interface, isotp.Address(isotp.AddressingMode.Extended_29bits, rxid=RXID, txid=TXID))
     config = configure(auth_key)
+    # udsoncan caps every request at 5 s total by default, which cuts P2* short
+    config["request_timeout"] = None
     with Client(conn, config) as client:
         TestCli(client, conn, keepalive=not args.no_keepalive).run()
 
