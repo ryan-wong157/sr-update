@@ -139,7 +139,7 @@ sr_errno_t sr_isotp_rx(uint8_t* out_buf, uint32_t out_len, uint32_t* recv_length
         // TEMP: 8 BYTES MAX FOR NOW
         uint8_t frame[8];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
-        if (n > 0) {
+        if (n > 0 && last_err == SR_OK && !rx_done_flag) {
             sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, frame, n);
             if (retval != SR_OK) {
                 isotp_session_idle(&isotp_session);
