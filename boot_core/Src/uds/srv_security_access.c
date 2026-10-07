@@ -45,16 +45,20 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
     uint8_t sfb = rx_buf[1];
 
     if ((sfb & 0x7F) == 0x01) {
-        // seed request, always generate and reply with a seed
-        sr_generate_number(&curr_seed);
-        unlock_state = EXPECTING_SIGNATURE;
-
         tx_buf[0] = SID_SEC_ACCESS_RES;
         tx_buf[1] = sfb;
-        tx_buf[2] = (uint8_t)(curr_seed >> 24);
-        tx_buf[3] = (uint8_t)(curr_seed >> 16);
-        tx_buf[4] = (uint8_t)(curr_seed >> 8);
-        tx_buf[5] = (uint8_t)curr_seed;
+        uint32_t seed = 0;
+
+        if (security_access != SECURITY_UNLOCKED) {
+            sr_generate_number(&curr_seed);
+            seed = curr_seed;
+            unlock_state = EXPECTING_SIGNATURE;
+        }
+
+        tx_buf[2] = (uint8_t)(seed >> 24);
+        tx_buf[3] = (uint8_t)(seed >> 16);
+        tx_buf[4] = (uint8_t)(seed >> 8);
+        tx_buf[5] = (uint8_t)seed;
 
         return sr_isotp_tx(tx_buf, 6);
     } else if ((sfb & 0x7F) == 0x02) {
