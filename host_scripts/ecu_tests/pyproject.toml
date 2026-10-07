@@ -1,0 +1,28 @@
+[project]
+name = "ecu-tests"
+version = "0.1.0"
+description = "Black-box ISO-TP and UDS tests for the bootloader, run against the real ECU over SocketCAN"
+readme = "README.md"
+authors = [
+    { name = "Ryan Wong", email = "wongrt0502@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "ota-client",
+    "pytest>=8.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+ota-client = { path = "../ota_client", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "flash: erases/writes firmware slot B, only runs with --flash",
+    "lockout: triggers the 60 s security access lockout, only runs with --lockout",
+    "slow: takes more than a few seconds (S3 timeouts, resets, full image transfers)",
+]
