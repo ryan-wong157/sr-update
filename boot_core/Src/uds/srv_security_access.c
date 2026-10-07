@@ -43,19 +43,22 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
     }
 
     uint8_t sfb = rx_buf[1];
-    uint8_t suppress = sfb >> 7;
 
     if ((sfb & 0x7F) == 0x01) {
-        // seed request, always generate and reply with a seed
-        sr_generate_number(&curr_seed);
-        unlock_state = EXPECTING_SIGNATURE;
-
         tx_buf[0] = SID_SEC_ACCESS_RES;
         tx_buf[1] = sfb;
-        tx_buf[2] = (uint8_t)(curr_seed >> 24);
-        tx_buf[3] = (uint8_t)(curr_seed >> 16);
-        tx_buf[4] = (uint8_t)(curr_seed >> 8);
-        tx_buf[5] = (uint8_t)curr_seed;
+        uint32_t seed = 0;
+
+        if (security_access != SECURITY_UNLOCKED) {
+            sr_generate_number(&curr_seed);
+            seed = curr_seed;
+            unlock_state = EXPECTING_SIGNATURE;
+        }
+
+        tx_buf[2] = (uint8_t)(seed >> 24);
+        tx_buf[3] = (uint8_t)(seed >> 16);
+        tx_buf[4] = (uint8_t)(seed >> 8);
+        tx_buf[5] = (uint8_t)seed;
 
         return sr_isotp_tx(tx_buf, 6);
     } else if ((sfb & 0x7F) == 0x02) {
@@ -79,6 +82,12 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
         signature[66] = (uint8_t)(curr_seed >> 8);
         signature[67] = (uint8_t)curr_seed;
 
+        // ed25519 verification takes a while, tell client to wait
+        sr_errno_t result = uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_REQUEST_RECEIVED_RESPONSE_PENDING);
+        if (result != SR_OK) {
+            return result;
+        }
+
         // validate using ed25519 specifically for curr_seed
         uint8_t og_msg[68];
         uint64_t og_msg_len;
@@ -87,6 +96,7 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
             num_attempts++;
             if (num_attempts >= CFG_MAX_x27_ATTEMPTS) {
                 timeout_start = sr_millis();
+                return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_EXCEEDED_NUMBER_OF_ATTEMPTS);
             }
             return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INVALID_KEY);
         }
@@ -94,12 +104,10 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
         security_access = SECURITY_UNLOCKED;
         num_attempts = 0;
 
-        if (!suppress) {
-            tx_buf[0] = SID_SEC_ACCESS_RES;
-            tx_buf[1] = sfb;
-            return sr_isotp_tx(tx_buf, 2);
-        }
-        return SR_OK;
+        // suppress bit is ignored here, once 0x78 has been sent the final response must follow
+        tx_buf[0] = SID_SEC_ACCESS_RES;
+        tx_buf[1] = sfb;
+        return sr_isotp_tx(tx_buf, 2);
     } else {
         // unknown sfb
         return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_SUB_FUNCTION_NOT_SUPPORTED);
