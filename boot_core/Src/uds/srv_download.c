@@ -74,11 +74,10 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
 
     uint8_t bytes_needed_for_maxblocklength = 0;
     uint32_t tmp = CFG_UDS_x36_MAX_BLOCK_LEN;
-    do {
-        // this handles if CFG_UDS_x36_MAX_BLOCK_LEN = 0, still need 1 byte to represent
+    while (tmp) {
         bytes_needed_for_maxblocklength++;
         tmp >>= 8;
-    } while (tmp);
+    }
     tx_buf[1] = bytes_needed_for_maxblocklength << 4; // LS nibble is reserved 0x0
 
     for (int i = 0; i < bytes_needed_for_maxblocklength; i++) {
@@ -91,7 +90,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
 }
 
 sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
-    if (rx_length < 3 || rx_length > (2 + CFG_UDS_x36_MAX_BLOCK_LEN)) {
+    if (rx_length < 3 || rx_length > CFG_UDS_x36_MAX_BLOCK_LEN) {
         // Must adhere to block length limit as well
         return uds_send_nrc(tx_buf, SID_TRNSFR_DATA_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
     }
