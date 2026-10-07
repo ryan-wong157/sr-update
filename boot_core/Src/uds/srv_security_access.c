@@ -96,6 +96,7 @@ sr_errno_t x27_sec_access_handler(const uint8_t* rx_buf, uint32_t rx_length, uin
             num_attempts++;
             if (num_attempts >= CFG_MAX_x27_ATTEMPTS) {
                 timeout_start = sr_millis();
+                return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_EXCEEDED_NUMBER_OF_ATTEMPTS);
             }
             return uds_send_nrc(tx_buf, SID_SEC_ACCESS_RQ, NRC_INVALID_KEY);
         }
