@@ -53,7 +53,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
     for (int i = 0; i < mem_size_len; i++) {
         mem_size = (mem_size << 8) | rx_buf[index_offset + i];
     }
-    if (mem_size == 0 || mem_size > FW_MAX_IMAGE_SIZE_BYTES) {
+    if (mem_size == 0 || mem_size > FW_ACTUAL_SIZE_BYTES) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_REQUEST_OUT_OF_RANGE);
     }
 
