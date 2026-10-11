@@ -4,6 +4,18 @@
 #include <stdint.h>
 #include "config/flash_config.h" // FROM MCU-specific header
 
+// FLASH LOCATION DEFINES ============================================================
+#define BOOTLOADER_SIZE_BYTES (BOOTLOADER_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)
+#define FW_SLOT_A_SIZE_BYTES (FW_SLOT_A_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)
+#define FW_SLOT_B_SIZE_BYTES (FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)
+
+#define FW_ACTUAL_SIZE_PAGES (FW_SLOT_A_SIZE_PAGES - 1)
+#define FW_ACTUAL_SIZE_BYTES (FW_ACTUAL_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)
+
+#define BOOTLOADER_START_ADDRESS FLASH_BEGIN_ADDRESS
+#define FW_SLOT_A_START_ADDRESS (BOOTLOADER_START_ADDRESS + BOOTLOADER_SIZE_BYTES)
+#define FW_SLOT_B_START_ADDRESS (FW_SLOT_A_START_ADDRESS + FW_SLOT_A_SIZE_BYTES)
+
 // HEADER structures =================================================================
 #define IMAGE_MAGIC 0xb0fe673d
 #define IMAGE_HEADER_SIZE 16
@@ -41,4 +53,30 @@ typedef struct  __attribute__((packed)) {
     uint16_t tlv_len;
 } image_tlv_t;
 
+// TRAILER structures ================================================================
+// Put trailer at start of final page of each slot
+#define TRAILER_SIZE_BYTES sizeof(image_trailer_t)
+#define TRAILER_A_START_ADDRESS (FW_SLOT_B_START_ADDRESS - FLASH_PAGE_SIZE_BYTES)
+#define TRAILER_B_START_ADDRESS (FW_SLOT_B_START_ADDRESS + FW_SLOT_B_SIZE_BYTES - FLASH_PAGE_SIZE_BYTES)
+static const uint32_t trailer_magic_const[4] = {
+    0x56951c69,
+    0x1edffec5,
+    0x0cdfc748,
+    0xd6056ce4,
+};
+
+// 8 byte aligned
+typedef struct {
+    uint8_t status;
+    uint8_t padding[FLASH_WRITE_GRANULARITY_BYTES - 1]; // pad to FLASH_WRITE_GRANULARITY_BYTES
+} record_t;
+
+typedef struct {
+    record_t trailer_swap_status[2 * FW_ACTUAL_SIZE_PAGES]; // 2 records per page in this slot
+    record_t trailer_swap_size;
+    record_t trailer_swap_info;
+    record_t trailer_copy_done;
+    record_t trailer_image_ok;
+    uint32_t trailer_magic[4]; // this may need padding depending on the write granularity
+} image_trailer_t;
 #endif

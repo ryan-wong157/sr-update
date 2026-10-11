@@ -14,43 +14,7 @@
 
 // flash regions
 #define BOOTLOADER_SIZE_PAGES 11U
-#define BOOTLOADER_SIZE_BYTES (BOOTLOADER_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)  // 22 KiB, pages 0-10
 #define FW_SLOT_A_SIZE_PAGES 26U
 #define FW_SLOT_B_SIZE_PAGES 27U
-#define FW_SLOT_A_SIZE_BYTES (FW_SLOT_A_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES) // 52 KiB, 26 pages each
-#define FW_SLOT_B_SIZE_BYTES (FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES) // 54 KiB, 27 pages each
-
-#define FW_ACTUAL_SIZE_PAGES (FW_SLOT_A_SIZE_PAGES - 1) // one page for trailer at end of each slot
-#define FW_ACTUAL_SIZE_BYTES (FW_ACTUAL_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES)
-
-#define BOOTLOADER_START_ADDRESS FLASH_BEGIN_ADDRESS
-#define FW_SLOT_A_START_ADDRESS (BOOTLOADER_START_ADDRESS + BOOTLOADER_SIZE_BYTES)
-#define FW_SLOT_B_START_ADDRESS (FW_SLOT_A_START_ADDRESS + FW_SLOT_A_SIZE_BYTES)
-
-// TRAILER structures ================================================================
-// Specific to this MCU only
-#define TRAILER_SIZE_BYTES sizeof(image_trailer_t)
-static const uint32_t trailer_magic_const[4] = {
-    0x56951c69,
-    0x1edffec5,
-    0x0cdfc748,
-    0xd6056ce4,
-};
-
-// 8 byte aligned
-typedef struct {
-    uint8_t status;
-    uint8_t padding[7]; // pad to FLASH_WRITE_GRANULARITY_BYTES
-} record_t;
-
-// 50 * 8 + 4 * 8 + 16 = 432 bytes...
-typedef struct {
-    record_t trailer_swap_status[2 * FW_ACTUAL_SIZE_PAGES]; // 2 records per page in this slot
-    record_t trailer_swap_size;
-    record_t trailer_swap_info;
-    record_t trailer_copy_done;
-    record_t trailer_image_ok;
-    uint32_t trailer_magic[4];
-} image_trailer_t;
 
 #endif

@@ -4,6 +4,7 @@
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
 #include "common_config/uds_config.h"
+#include "image_format.h"
 #include "mcu_interface/flash_driver.h"
 #include "flash_writer.h"
 
