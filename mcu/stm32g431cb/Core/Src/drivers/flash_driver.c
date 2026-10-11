@@ -36,7 +36,7 @@ sr_errno_t sr_flash_write(uint32_t address, const uint8_t* data) {
 }
 
 sr_errno_t sr_flash_erase_page(uint32_t bank, uint32_t start_page, uint32_t num_pages) {
-    if (bank != FLASH_BANK_1 || start_page < 0 || start_page > NUM_FLASH_PAGES - 1 || num_pages > (NUM_FLASH_PAGES - start_page + 1)) {
+    if (bank != FLASH_BANK_1 || start_page < 0 || start_page > NUM_FLASH_PAGES - 1 || num_pages > (NUM_FLASH_PAGES - start_page)) {
         return ERR_FLASH_INVALID_INPUT;
     }
 
