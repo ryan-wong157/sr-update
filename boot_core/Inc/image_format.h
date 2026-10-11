@@ -58,18 +58,19 @@ typedef struct  __attribute__((packed)) {
 #define TRAILER_SIZE_BYTES sizeof(image_trailer_t)
 #define TRAILER_A_START_ADDRESS (FW_SLOT_B_START_ADDRESS - FLASH_PAGE_SIZE_BYTES)
 #define TRAILER_B_START_ADDRESS (FW_SLOT_B_START_ADDRESS + FW_SLOT_B_SIZE_BYTES - FLASH_PAGE_SIZE_BYTES)
-static const uint32_t trailer_magic_const[4] = {
-    0x56951c69,
-    0x1edffec5,
-    0x0cdfc748,
-    0xd6056ce4,
-};
+#define TRAILER_MAGIC 0x56951c69
 
 // 8 byte aligned
-typedef struct {
+typedef union {
     uint8_t status;
-    uint8_t padding[FLASH_WRITE_GRANULARITY_BYTES - 1]; // pad to FLASH_WRITE_GRANULARITY_BYTES
+    uint8_t raw[FLASH_WRITE_GRANULARITY_BYTES]; // pad to FLASH_WRITE_GRANULARITY_BYTES
 } record_t;
+
+// padded to FLASH_WRITE_GRANULARITY_BYTES
+typedef union {
+    uint32_t magic;
+    uint8_t raw[FLASH_WRITE_GRANULARITY_BYTES];
+} magic_record_t;
 
 typedef struct {
     record_t trailer_swap_status[2 * FW_ACTUAL_SIZE_PAGES]; // 2 records per page in this slot
@@ -77,6 +78,6 @@ typedef struct {
     record_t trailer_swap_info;
     record_t trailer_copy_done;
     record_t trailer_image_ok;
-    uint32_t trailer_magic[4]; // this may need padding depending on the write granularity
+    magic_record_t trailer_magic;
 } image_trailer_t;
 #endif
