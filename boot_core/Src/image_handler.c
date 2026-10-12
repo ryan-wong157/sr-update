@@ -3,8 +3,11 @@
 #include "image_format.h"
 #include "mcu_interface/flash_driver.h"
 
+
 static const image_header_t* get_header(slot_type_t slot) {
     if (slot == SLOT_A) return (const image_header_t*)FW_SLOT_A_START_ADDRESS;
+    const image_header_t* update = (const image_header_t*)FW_SLOT_B_UPDATE_START_ADDRESS;
+    if (update->ih_magic == IMAGE_MAGIC) return update;
     return (const image_header_t*)FW_SLOT_B_START_ADDRESS;
 }
 static image_trailer_t* get_trailer(slot_type_t slot) {
@@ -145,4 +148,91 @@ sr_errno_t erase_trailer(slot_type_t slot) {
     }
     if (retval != SR_OK) return retval;
     return sr_flash_erase_page(bank, page, 1);
+}
+
+// SWAP functions ====================================================================
+// Swap progress is recorded in slot A's trailer, 2 records per page
+static sr_errno_t set_swap_status(uint32_t record_idx) {
+    image_trailer_t* trailer = get_trailer(SLOT_A);
+    record_t data;
+    memset(&data, 0xFF, sizeof(data));
+    data.status = 0x01;
+    return sr_flash_write((uint32_t)&(trailer->trailer_swap_status[record_idx]), data.raw);
+}
+
+// Erases the page containing address
+static sr_errno_t erase_page(uint32_t address) {
+    uint32_t bank;
+    uint32_t page;
+    sr_errno_t retval = sr_flash_get_page_info(address, &bank, &page);
+    if (retval != SR_OK) return retval;
+    return sr_flash_erase_page(bank, page, 1);
+}
+
+// Erases the page at dst_address then copies the page at src_address into it
+// Note that dst_address and src_address has to be the first byte of a page
+static sr_errno_t copy_page(uint32_t dst_address, uint32_t src_address) {
+    sr_errno_t retval = erase_page(dst_address);
+    if (retval != SR_OK) return retval;
+
+    for (uint32_t offset = 0; offset < FLASH_PAGE_SIZE_BYTES; offset += FLASH_WRITE_GRANULARITY_BYTES) {
+        retval = sr_flash_write(dst_address + offset, (const uint8_t*)(src_address + offset));
+        if (retval != SR_OK) return retval;
+    }
+    return SR_OK;
+}
+
+// writes p(idx) to s(idx) then s(idx + 1) to p(idx) and erases s(idx + 1)
+// If is_halfway_done is set, only does the second write.
+// Note that i use 0-indexing and you end up with filled s(0) page
+sr_errno_t swap_forward(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done) {
+    if (total_pages > FW_ACTUAL_SIZE_PAGES || index > total_pages) return ERR_FLASH_INVALID_INPUT;
+
+    for (uint32_t idx = index; idx < total_pages; idx++) {
+        uint32_t primary = FW_SLOT_A_START_ADDRESS + idx * FLASH_PAGE_SIZE_BYTES;
+        uint32_t secondary = FW_SLOT_B_START_ADDRESS + idx * FLASH_PAGE_SIZE_BYTES;
+        sr_errno_t retval;
+
+        if (!is_halfway_done) {
+            retval = copy_page(secondary, primary);
+            if (retval != SR_OK) return retval;
+            retval = set_swap_status(2 * idx);
+            if (retval != SR_OK) return retval;
+        }
+        is_halfway_done = 0;
+
+        retval = copy_page(primary, secondary + FLASH_PAGE_SIZE_BYTES);
+        if (retval != SR_OK) return retval;
+        retval = set_swap_status(2 * idx + 1);
+        if (retval != SR_OK) return retval;
+    }
+
+    // erase slot 2 final page to prevent leftover header being present in page 1 for 1 page swaps
+    return erase_page(FW_SLOT_B_START_ADDRESS + total_pages * FLASH_PAGE_SIZE_BYTES);
+}
+
+// writes p(idx) to s(idx + 1) and s(idx) to p(idx), counting down from index to 0
+// You end up with empty s(0) page. This is used for swapping back
+sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done) {
+    if (total_pages > FW_ACTUAL_SIZE_PAGES || index >= total_pages) return ERR_FLASH_INVALID_INPUT;
+
+    for (uint32_t idx = index + 1; idx-- > 0;) {
+        uint32_t primary = FW_SLOT_A_START_ADDRESS + idx * FLASH_PAGE_SIZE_BYTES;
+        uint32_t secondary = FW_SLOT_B_START_ADDRESS + idx * FLASH_PAGE_SIZE_BYTES;
+        sr_errno_t retval;
+
+        if (!is_halfway_done) {
+            retval = copy_page(secondary + FLASH_PAGE_SIZE_BYTES, primary);
+            if (retval != SR_OK) return retval;
+            retval = set_swap_status(2 * idx);
+            if (retval != SR_OK) return retval;
+        }
+        is_halfway_done = 0;
+
+        retval = copy_page(primary, secondary);
+        if (retval != SR_OK) return retval;
+        retval = set_swap_status(2 * idx + 1);
+        if (retval != SR_OK) return retval;
+    }
+    return SR_OK;
 }

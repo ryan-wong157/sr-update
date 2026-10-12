@@ -38,12 +38,14 @@ uint8_t is_image_ok(slot_type_t slot);
 sr_errno_t set_swap_info(slot_type_t slot, swap_type_t swap_type);
 swap_type_t get_swap_info(slot_type_t slot);
 
-// Auto calculates and sets max swap size (in pages) to the slot
 sr_errno_t set_swap_size_pages(slot_type_t slot);
 // Returns 0xFF if the swap size has not been set
 uint32_t get_swap_size_pages(slot_type_t slot);
 
 sr_errno_t erase_trailer(slot_type_t slot);
 
-// TODO: swap function
+// SWAP functions ====================================================================
+sr_errno_t swap_forward(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done);
+sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done);
+
 #endif
