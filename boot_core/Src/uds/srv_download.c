@@ -65,7 +65,7 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         return result;
     }
 
-    if (sr_flash_writer_begin(FW_SLOT_B_START_ADDRESS) != SR_OK) {
+    if (sr_flash_writer_begin(FW_SLOT_B_UPDATE_START_ADDRESS) != SR_OK) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }
     num_bytes_to_download = mem_size;
