@@ -26,7 +26,8 @@ const image_version_t* get_image_version(slot_type_t slot);
 uint8_t is_image_valid(slot_type_t slot, uint8_t check_crypto);
 
 // TRAILER functions =================================================================
-// Each trailer field can only be set once, call erase_trailer() before setting it again
+// Setting a field to the value it already holds does nothing and returns SR_OK.
+// Setting it to a different value fails, call erase_trailer() first
 sr_errno_t set_trailer_magic(slot_type_t slot);
 uint8_t is_trailer_magic_set(slot_type_t slot);
 

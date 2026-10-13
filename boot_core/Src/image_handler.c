@@ -32,13 +32,22 @@ static uint32_t get_total_image_size(slot_type_t slot) {
     return total;
 }
 
+// Does nothing if the record already holds status, writes it if the record is erased,
+// and fails if it holds anything else
+static sr_errno_t set_record(const record_t* record, uint8_t status) {
+    if (record->status == status) return SR_OK;
+    if (record->status != 0xFF) return ERR_FLASH_WRITE;
+
+    record_t data;
+    memset(&data, 0xFF, sizeof(data));
+    data.status = status;
+    return sr_flash_write((uint32_t)record, data.raw);
+}
+
 // Swap progress is recorded in slot A's trailer, 2 records per page
 static sr_errno_t set_swap_status(uint32_t record_idx) {
     image_trailer_t* trailer = get_trailer(SLOT_A);
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = 0x01;
-    return sr_flash_write((uint32_t)&(trailer->trailer_swap_status[record_idx]), data.raw);
+    return set_record(&(trailer->trailer_swap_status[record_idx]), 0x01);
 }
 
 // Erases the page containing address
@@ -95,6 +104,8 @@ const image_version_t* get_image_version(slot_type_t slot) {
 // TRAILER functions =================================================================
 sr_errno_t set_trailer_magic(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
+    if (is_trailer_magic_set(slot)) return SR_OK;
+
     magic_record_t data;
     memset(&data, 0xFF, sizeof(data));
     data.magic = TRAILER_MAGIC;
@@ -111,10 +122,7 @@ uint8_t is_trailer_magic_set(slot_type_t slot) {
 
 sr_errno_t set_copy_done(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = 0x01;
-    return sr_flash_write((uint32_t)&(trailer->trailer_copy_done), data.raw);
+    return set_record(&(trailer->trailer_copy_done), 0x01);
 }
 uint8_t is_copy_done(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
@@ -123,10 +131,7 @@ uint8_t is_copy_done(slot_type_t slot) {
 
 sr_errno_t set_image_ok(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = 0x01;
-    return sr_flash_write((uint32_t)&(trailer->trailer_image_ok), data.raw);
+    return set_record(&(trailer->trailer_image_ok), 0x01);
 }
 uint8_t is_image_ok(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
@@ -135,10 +140,7 @@ uint8_t is_image_ok(slot_type_t slot) {
 
 sr_errno_t set_swap_info(slot_type_t slot, swap_type_t swap_type) {
     image_trailer_t* trailer = get_trailer(slot);
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = (uint8_t)swap_type;
-    return sr_flash_write((uint32_t)&(trailer->trailer_swap_info), data.raw);
+    return set_record(&(trailer->trailer_swap_info), (uint8_t)swap_type);
 }
 swap_type_t get_swap_info(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
@@ -156,10 +158,7 @@ sr_errno_t set_swap_size_pages(slot_type_t slot) {
     uint32_t bigger = size_a > size_b ? size_a : size_b;
     uint32_t pages = (bigger + FLASH_PAGE_SIZE_BYTES - 1) / FLASH_PAGE_SIZE_BYTES;
     if (pages > FW_ACTUAL_SIZE_PAGES) pages = FW_ACTUAL_SIZE_PAGES;
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = (uint8_t)pages;
-    return sr_flash_write((uint32_t)&(trailer->trailer_swap_size), data.raw);
+    return set_record(&(trailer->trailer_swap_size), (uint8_t)pages);
 }
 
 // Returns 0xFF if the swap size has not been set
