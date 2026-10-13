@@ -13,7 +13,6 @@ typedef enum {
 typedef enum {
     SWAP_TYPE_TEST = 0x01,
     SWAP_TYPE_REVERT = 0x02,
-    SWAP_TYPE_PERM = 0x03,
     SWAP_TYPE_NONE = 0xFF
 } swap_type_t;
 
@@ -45,6 +44,8 @@ sr_errno_t set_swap_size_pages(slot_type_t slot);
 uint32_t get_swap_size_pages(slot_type_t slot);
 
 sr_errno_t erase_trailer(slot_type_t slot);
+// Erases every page of the slot, trailer last
+sr_errno_t erase_slot(slot_type_t slot);
 
 // Read trailer A swap status and returns index and is_halfway done for index that swap is up to
 sr_errno_t get_swap_status(uint32_t* index, uint8_t* is_halfway_done);

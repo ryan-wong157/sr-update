@@ -5,6 +5,7 @@
 #include "isotp/isotp.h"
 #include "common_config/uds_config.h"
 #include "image_format.h"
+#include "image_handler.h"
 #include "mcu_interface/flash_driver.h"
 #include "flash_writer.h"
 
@@ -63,6 +64,11 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
     if (result != SR_OK) {
         // if isotp is cooked, abort
         return result;
+    }
+
+    // clear any update marker left by an earlier download
+    if (erase_trailer(SLOT_B) != SR_OK) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_START_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
     if (sr_flash_writer_begin(FW_SLOT_B_UPDATE_START_ADDRESS) != SR_OK) {
@@ -145,9 +151,7 @@ sr_errno_t x36_trnsfr_data_handler(const uint8_t* rx_buf, uint32_t rx_length, ui
     return sr_isotp_tx(tx_buf, 2);
 }
 
-/*
-This should: flush the flash write buffer, verify the metadata (signature) and do bootloader-related stuff
-*/
+// Flushes the flash write buffer and marks the update in slot B as pending.
 sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, uint8_t* tx_buf) {
     if (rx_length != 1) {
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_INCORRECT_MSG_LENGTH_OR_INVALID_FORMAT);
@@ -162,8 +166,10 @@ sr_errno_t x37_download_exit_handler(const uint8_t* rx_buf, uint32_t rx_length, 
         return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_PROGRAMMING_FAILURE);
     }
 
-    // TODO: CHECK INTEGRITY AND OTHER THINGS.
-    // IF FAIL, SEND BACK 0X72 GENERAL PROGRAMMING FAILURE
+    // slot B's trailer magic is what tells the bootloader there is an update to test
+    if (set_trailer_magic(SLOT_B) != SR_OK) {
+        return uds_send_nrc(tx_buf, SID_DOWNLOAD_EXIT_RQ, NRC_PROGRAMMING_FAILURE);
+    }
 
     curr_state = DOWNLOAD_IDLE;
     expected_seq_counter = 1;

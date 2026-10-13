@@ -21,6 +21,32 @@ static sr_errno_t start_revert(void) {
     return swap_revert(swap_size - 1, swap_size, 0);
 }
 
+// Sets up slot A's trailer for a test swap, clears the pending update marker in slot B's
+// trailer, then swaps the update in and marks the copy as done.
+static sr_errno_t start_test_swap(void) {
+    sr_errno_t retval = erase_trailer(SLOT_A);
+    if (retval == SR_OK) retval = set_swap_info(SLOT_A, SWAP_TYPE_TEST);
+    if (retval == SR_OK) retval = set_swap_size_pages(SLOT_A);
+    if (retval == SR_OK) retval = set_trailer_magic(SLOT_A);
+    if (retval == SR_OK) retval = erase_trailer(SLOT_B);
+    if (retval != SR_OK) return retval;
+
+    retval = swap_forward(0, get_swap_size_pages(SLOT_A), 0);
+    if (retval != SR_OK) return retval;
+    return set_copy_done(SLOT_A);
+}
+
+// Returns 1 if the update in slot B has a lower version than the image in slot A.
+// If slot A has no image return 0
+static uint8_t is_update_older(void) {
+    if (!is_header_magic_set(SLOT_A)) return 0;
+    const image_version_t* current = get_image_version(SLOT_A);
+    const image_version_t* update = get_image_version(SLOT_B);
+    if (update->iv_major != current->iv_major) return update->iv_major < current->iv_major;
+    if (update->iv_minor != current->iv_minor) return update->iv_minor < current->iv_minor;
+    return update->iv_revision < current->iv_revision;
+}
+
 int main(void) {
     if (sr_peripherals_init() != SR_OK) {
         sr_reset_mcu();
@@ -58,17 +84,24 @@ int main(void) {
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
-    } else if (is_trailer_magic_set(SLOT_B) && !is_image_ok(SLOT_B) && is_copy_done(SLOT_B)) {
+    } else if (is_trailer_magic_set(SLOT_B) && is_copy_done(SLOT_B)) {
         // revert but powered-off before slot B is erased in the normal revert path
         retval = start_revert();
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
         confirm_revert = 1;
-    } else if (is_trailer_magic_set(SLOT_B) && !is_image_ok(SLOT_B)) {
-        // test swap
-    } else if (is_trailer_magic_set(SLOT_B) && is_image_ok(SLOT_B)) {
-        // perm swap
+    } else if (is_trailer_magic_set(SLOT_B)) {
+        // test swap of a downloaded update
+        if (is_image_valid(SLOT_B, 1) && !is_update_older()) {
+            retval = start_test_swap();
+        } else {
+            // bad or older update, get rid of it and carry on booting slot A
+            retval = erase_slot(SLOT_B);
+        }
+        if (retval != SR_OK) {
+            sr_reset_mcu();
+        }
     } else if (is_trailer_magic_set(SLOT_A) && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
         // revert
         if (is_image_valid(SLOT_B, 0)) {

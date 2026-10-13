@@ -144,7 +144,7 @@ sr_errno_t set_swap_info(slot_type_t slot, swap_type_t swap_type) {
 }
 swap_type_t get_swap_info(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    if (SWAP_TYPE_TEST <= trailer->trailer_swap_info.status && trailer->trailer_swap_info.status <= SWAP_TYPE_PERM) {
+    if (SWAP_TYPE_TEST <= trailer->trailer_swap_info.status && trailer->trailer_swap_info.status <= SWAP_TYPE_REVERT) {
         return (swap_type_t)trailer->trailer_swap_info.status;
     } else {
         return SWAP_TYPE_NONE;
@@ -178,6 +178,17 @@ sr_errno_t erase_trailer(slot_type_t slot) {
     }
     if (retval != SR_OK) return retval;
     return sr_flash_erase_page(bank, page, 1);
+}
+
+// Erases every page of the slot. The trailer is the last page, so it goes last
+sr_errno_t erase_slot(slot_type_t slot) {
+    uint32_t start_address = (slot == SLOT_A) ? FW_SLOT_A_START_ADDRESS : FW_SLOT_B_START_ADDRESS;
+    uint32_t num_pages = (slot == SLOT_A) ? FW_SLOT_A_SIZE_PAGES : FW_SLOT_B_SIZE_PAGES;
+    for (uint32_t page = 0; page < num_pages; page++) {
+        sr_errno_t retval = erase_page(start_address + page * FLASH_PAGE_SIZE_BYTES);
+        if (retval != SR_OK) return retval;
+    }
+    return SR_OK;
 }
 
 // Finds where swap got up to. Count uup for TEST and down for REVERT
