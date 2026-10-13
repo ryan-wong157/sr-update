@@ -1,5 +1,5 @@
 # FMT_Tool
-A simple python script which signs th SHA256 hash of a given binary file, appends a header and type-length values (TLVs).
+A simple python script which signs th SHA512 hash of a given binary file, appends a header and type-length values (TLVs).
 
 ## Usage
 ```bash
@@ -17,8 +17,8 @@ ecu-id is a 12 bit (3 hex digit) value which corresponds to the type of ECU this
 
 ```C
 // HEADER structures =================================================================
-#define IMAGE_MAGIC 0x96f3b83d
-#define IMAGE_HEADER_SIZE 32
+#define IMAGE_MAGIC 0xb0fe673d
+#define IMAGE_HEADER_SIZE 16
 
 // 4 bytes
 typedef struct __attribute__((packed)) {
@@ -36,9 +36,9 @@ typedef struct __attribute__((packed)) {
     image_version_t ih_img_ver;
 } image_header_t;
 
-// TLV structures =================================================================
-#define IMAGE_TLV_INFO_MAGIC 0x6907
-#define IMAGE_TLV_SHA256 0x01
+// TLV structures ====================================================================
+#define IMAGE_TLV_INFO_MAGIC 0xcd34
+#define IMAGE_TLV_SHA512 0x01
 #define IMAGE_TLV_ED25519_SIG 0x02
 
 // 4 bytes

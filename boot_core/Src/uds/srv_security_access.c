@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include "tweetnacl.h"
+#include "public_keys.h"
 #include "uds/uds_codes.h"
 #include "uds/srv_security_access.h"
 #include "uds/srv_session_control.h"

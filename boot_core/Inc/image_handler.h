@@ -23,6 +23,7 @@ uint16_t get_header_size(slot_type_t slot);
 uint8_t is_ecu_id_match(slot_type_t slot);
 uint32_t get_image_size(slot_type_t slot);
 const image_version_t* get_image_version(slot_type_t slot);
+uint8_t is_image_valid(slot_type_t slot, uint8_t check_crypto);
 
 // TRAILER functions =================================================================
 // Each trailer field can only be set once, call erase_trailer() before setting it again
@@ -44,6 +45,8 @@ uint32_t get_swap_size_pages(slot_type_t slot);
 
 sr_errno_t erase_trailer(slot_type_t slot);
 
+// Read trailer A swap status and returns index and is_halfway done for index that swap is up to
+sr_errno_t get_swap_status(uint32_t* index, uint8_t* is_halfway_done);
 // SWAP functions ====================================================================
 sr_errno_t swap_forward(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done);
 sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_done);

@@ -39,8 +39,10 @@ typedef struct __attribute__((packed)) {
 
 // TLV structures ====================================================================
 #define IMAGE_TLV_INFO_MAGIC 0xcd34
-#define IMAGE_TLV_SHA256 0x01
+#define IMAGE_TLV_SHA512 0x01
 #define IMAGE_TLV_ED25519_SIG 0x02
+#define IMAGE_TLV_SHA512_SIZE 64
+#define IMAGE_TLV_ED25519_SIG_SIZE 64
 
 // 4 bytes
 typedef struct __attribute__((packed)) {

@@ -19,8 +19,8 @@ TLV_HEADER_SIZE_BYTES = 4
 TL_SIZE_BYTES = 4
 
 HEADER_MAGIC = 0xb0fe673d
-TLV_HEADER_MAGIC = 0x6907
-TLV_SHA256_ID = 0x01
+TLV_HEADER_MAGIC = 0xcd34
+TLV_SHA512_ID = 0x01
 TLV_ED25519_SIG_ID = 0x02
 gh_private_key_base64 = str(os.environ.get("PRIVATE_SIGNING_KEY"))
 
@@ -37,8 +37,8 @@ def prep_header(ecu_id: int, image_size: int) -> bytes:
     )
     return header
 
-def prep_sha256(path: Path, header: bytes) -> bytes:
-    digest = hashes.Hash(hashes.SHA256())
+def prep_sha512(path: Path, header: bytes) -> bytes:
+    digest = hashes.Hash(hashes.SHA512())
     digest.update(header)
     with open(path, mode="rb") as file:
         while True:
@@ -48,8 +48,8 @@ def prep_sha256(path: Path, header: bytes) -> bytes:
             digest.update(chunk)
     return digest.finalize()
 
-def prep_ed25519(sha256: bytes, key: Ed25519PrivateKey) -> bytes:
-    return key.sign(sha256)
+def prep_ed25519(sha512: bytes, key: Ed25519PrivateKey) -> bytes:
+    return key.sign(sha512)
 
 def validate_ecu_id(id: str) -> int:
     try:
@@ -96,13 +96,13 @@ def main():
                 break
             new_bin.write(chunk)
         
-        sha = prep_sha256(bin_path, header)
+        sha = prep_sha512(bin_path, header)
         sig = prep_ed25519(sha, private_key)
         
         # size = tlv_header + TLV x 2 
         tlv_total_size = len(sha) + len(sig) + 2 * TL_SIZE_BYTES + TLV_HEADER_SIZE_BYTES
         tlv_header = struct.pack(TLV_HEADER_FORMAT, TLV_HEADER_MAGIC, tlv_total_size)
-        sha_tl = struct.pack(TL_FORMAT, TLV_SHA256_ID, len(sha))
+        sha_tl = struct.pack(TL_FORMAT, TLV_SHA512_ID, len(sha))
         sig_tl = struct.pack(TL_FORMAT, TLV_ED25519_SIG_ID, len(sig))
         new_bin.write(tlv_header)
         new_bin.write(sha_tl)

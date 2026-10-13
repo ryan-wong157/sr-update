@@ -1,6 +1,8 @@
 #include <string.h>
 #include "image_handler.h"
 #include "image_format.h"
+#include "public_keys.h"
+#include "tweetnacl.h"
 #include "mcu_interface/flash_driver.h"
 
 
@@ -13,31 +15,6 @@ static const image_header_t* get_header(slot_type_t slot) {
 static image_trailer_t* get_trailer(slot_type_t slot) {
     if (slot == SLOT_A) return (image_trailer_t*)TRAILER_A_START_ADDRESS;
     return (image_trailer_t*)TRAILER_B_START_ADDRESS;
-}
-
-// HEADER functions ==================================================================
-uint8_t is_header_magic_set(slot_type_t slot) {
-    const image_header_t* header = get_header(slot);
-    return (header->ih_magic == IMAGE_MAGIC) ? 1 : 0;
-}
-
-uint16_t get_header_size(slot_type_t slot) {
-    const image_header_t* header = get_header(slot);
-    if (!is_header_magic_set(slot)) return 0;
-    return header->ih_hdr_size;
-}
-
-// Checks the image's ECU ID against the ECU_ID this bootloader was built with
-uint8_t is_ecu_id_match(slot_type_t slot) {
-    const image_header_t* header = get_header(slot);
-    return (header->ih_ecu_id == ECU_ID) ? 1 : 0;
-}
-
-// Size of the binary payload only, Returns 0 if the slot has no valid header
-uint32_t get_image_size(slot_type_t slot) {
-    const image_header_t* header = get_header(slot);
-    if (!is_header_magic_set(slot)) return 0;
-    return header->ih_img_size;
 }
 
 static uint32_t get_total_image_size(slot_type_t slot) {
@@ -55,12 +32,66 @@ static uint32_t get_total_image_size(slot_type_t slot) {
     return total;
 }
 
+// Swap progress is recorded in slot A's trailer, 2 records per page
+static sr_errno_t set_swap_status(uint32_t record_idx) {
+    image_trailer_t* trailer = get_trailer(SLOT_A);
+    record_t data;
+    memset(&data, 0xFF, sizeof(data));
+    data.status = 0x01;
+    return sr_flash_write((uint32_t)&(trailer->trailer_swap_status[record_idx]), data.raw);
+}
+
+// Erases the page containing address
+static sr_errno_t erase_page(uint32_t address) {
+    uint32_t bank;
+    uint32_t page;
+    sr_errno_t retval = sr_flash_get_page_info(address, &bank, &page);
+    if (retval != SR_OK) return retval;
+    return sr_flash_erase_page(bank, page, 1);
+}
+
+// Erases the page at dst_address then copies the page at src_address into it
+// Note that dst_address and src_address has to be the first byte of a page
+static sr_errno_t copy_page(uint32_t dst_address, uint32_t src_address) {
+    sr_errno_t retval = erase_page(dst_address);
+    if (retval != SR_OK) return retval;
+
+    for (uint32_t offset = 0; offset < FLASH_PAGE_SIZE_BYTES; offset += FLASH_WRITE_GRANULARITY_BYTES) {
+        retval = sr_flash_write(dst_address + offset, (const uint8_t*)(src_address + offset));
+        if (retval != SR_OK) return retval;
+    }
+    return SR_OK;
+}
+// HEADER functions ==================================================================
+uint8_t is_header_magic_set(slot_type_t slot) {
+    const image_header_t* header = get_header(slot);
+    return header->ih_magic == IMAGE_MAGIC;
+}
+
+uint16_t get_header_size(slot_type_t slot) {
+    const image_header_t* header = get_header(slot);
+    if (!is_header_magic_set(slot)) return 0;
+    return header->ih_hdr_size;
+}
+
+// Checks the image's ECU ID against the ECU_ID this bootloader was built with
+uint8_t is_ecu_id_match(slot_type_t slot) {
+    const image_header_t* header = get_header(slot);
+    return header->ih_ecu_id == ECU_ID;
+}
+
+// Size of the binary payload only, Returns 0 if the slot has no valid header
+uint32_t get_image_size(slot_type_t slot) {
+    const image_header_t* header = get_header(slot);
+    if (!is_header_magic_set(slot)) return 0;
+    return header->ih_img_size;
+}
+
 // Returned pointer points directly into flash
 const image_version_t* get_image_version(slot_type_t slot) {
     const image_header_t* header = get_header(slot);
     return &(header->ih_img_ver);
 }
-
 // TRAILER functions =================================================================
 sr_errno_t set_trailer_magic(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
@@ -75,7 +106,7 @@ sr_errno_t set_trailer_magic(slot_type_t slot) {
 }
 uint8_t is_trailer_magic_set(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    return (trailer->trailer_magic.magic == TRAILER_MAGIC) ? 1 : 0;
+    return trailer->trailer_magic.magic == TRAILER_MAGIC;
 }
 
 sr_errno_t set_copy_done(slot_type_t slot) {
@@ -87,7 +118,7 @@ sr_errno_t set_copy_done(slot_type_t slot) {
 }
 uint8_t is_copy_done(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    return (trailer->trailer_copy_done.status == 0x01) ? 1 : 0;
+    return trailer->trailer_copy_done.status == 0x01;
 }
 
 sr_errno_t set_image_ok(slot_type_t slot) {
@@ -99,7 +130,7 @@ sr_errno_t set_image_ok(slot_type_t slot) {
 }
 uint8_t is_image_ok(slot_type_t slot) {
     image_trailer_t* trailer = get_trailer(slot);
-    return (trailer->trailer_image_ok.status == 0x01) ? 1 : 0;
+    return trailer->trailer_image_ok.status == 0x01;
 }
 
 sr_errno_t set_swap_info(slot_type_t slot, swap_type_t swap_type) {
@@ -150,38 +181,29 @@ sr_errno_t erase_trailer(slot_type_t slot) {
     return sr_flash_erase_page(bank, page, 1);
 }
 
-// SWAP functions ====================================================================
-// Swap progress is recorded in slot A's trailer, 2 records per page
-static sr_errno_t set_swap_status(uint32_t record_idx) {
+// Finds where swap got up to. Count uup for TEST and down for REVERT
+sr_errno_t get_swap_status(uint32_t* index, uint8_t* is_halfway_done) {
     image_trailer_t* trailer = get_trailer(SLOT_A);
-    record_t data;
-    memset(&data, 0xFF, sizeof(data));
-    data.status = 0x01;
-    return sr_flash_write((uint32_t)&(trailer->trailer_swap_status[record_idx]), data.raw);
-}
+    swap_type_t swap_type = get_swap_info(SLOT_A);
+    uint32_t total_pages = get_swap_size_pages(SLOT_A);
+    if (swap_type == SWAP_TYPE_NONE || total_pages > FW_ACTUAL_SIZE_PAGES) return ERR_FLASH_INVALID_INPUT;
 
-// Erases the page containing address
-static sr_errno_t erase_page(uint32_t address) {
-    uint32_t bank;
-    uint32_t page;
-    sr_errno_t retval = sr_flash_get_page_info(address, &bank, &page);
-    if (retval != SR_OK) return retval;
-    return sr_flash_erase_page(bank, page, 1);
-}
-
-// Erases the page at dst_address then copies the page at src_address into it
-// Note that dst_address and src_address has to be the first byte of a page
-static sr_errno_t copy_page(uint32_t dst_address, uint32_t src_address) {
-    sr_errno_t retval = erase_page(dst_address);
-    if (retval != SR_OK) return retval;
-
-    for (uint32_t offset = 0; offset < FLASH_PAGE_SIZE_BYTES; offset += FLASH_WRITE_GRANULARITY_BYTES) {
-        retval = sr_flash_write(dst_address + offset, (const uint8_t*)(src_address + offset));
-        if (retval != SR_OK) return retval;
+    for (uint32_t done = 0; done < total_pages; done++) {
+        uint32_t idx = (swap_type == SWAP_TYPE_REVERT) ? (total_pages - 1 - done) : done;
+        // a page is fully swapped once its second record is set
+        if (trailer->trailer_swap_status[2 * idx + 1].status != 0x01) {
+            *index = idx;
+            *is_halfway_done = trailer->trailer_swap_status[2 * idx].status == 0x01;
+            return SR_OK;
+        }
     }
+
+    *index = total_pages;
+    *is_halfway_done = 0;
     return SR_OK;
 }
 
+// SWAP functions ====================================================================
 // writes p(idx) to s(idx) then s(idx + 1) to p(idx) and erases s(idx + 1)
 // If is_halfway_done is set, only does the second write.
 // Note that i use 0-indexing and you end up with filled s(0) page
@@ -235,4 +257,67 @@ sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_
         if (retval != SR_OK) return retval;
     }
     return SR_OK;
+}
+
+// Checks header magic, header size, ECU ID, that the sizes fit in a slot and that the
+// TLV area is where the header says it is. Also checks hash and signature if check_crypto is set
+uint8_t is_image_valid(slot_type_t slot, uint8_t check_crypto) {
+    const image_header_t* header = get_header(slot);
+    if (
+        !is_header_magic_set(slot) ||
+        !is_ecu_id_match(slot) ||
+        header->ih_hdr_size != IMAGE_HEADER_SIZE ||
+        header->ih_img_size == 0 ||
+        header->ih_img_size > FW_ACTUAL_SIZE_BYTES
+    ) return 0;
+    
+    // Check if TLVs are valid
+    uint32_t tlv_offset = header->ih_hdr_size + header->ih_img_size;
+    if (tlv_offset + sizeof(image_tlv_header_t) > FW_ACTUAL_SIZE_BYTES) return 0;
+
+    const image_tlv_header_t* tlv_header = (const image_tlv_header_t*)((uint32_t)header + tlv_offset);
+    if (tlv_header->th_tlv_magic != IMAGE_TLV_INFO_MAGIC) return 0;
+    if (tlv_header->th_tlv_total_size < sizeof(image_tlv_header_t)) return 0;
+    if (tlv_offset + tlv_header->th_tlv_total_size > FW_ACTUAL_SIZE_BYTES) return 0;
+
+    if (check_crypto) {
+        const uint8_t* sha512 = NULL;
+        const uint8_t* signature = NULL;
+        const uint8_t* tlv_start = (const uint8_t*)tlv_header + sizeof(image_tlv_header_t);
+        uint32_t combined_tlv_bytes = tlv_header->th_tlv_total_size - sizeof(image_tlv_header_t);
+        uint32_t offset = 0; // from the first TLV, just after the TLV header
+
+        while (offset < combined_tlv_bytes) {
+            // must be room left for the type-length struct and the value it says it has
+            if (combined_tlv_bytes - offset < sizeof(image_tlv_t)) return 0;
+            const image_tlv_t* curr_tlv = (const image_tlv_t*)(tlv_start + offset);
+            uint32_t curr_tlv_bytes = sizeof(image_tlv_t) + curr_tlv->tlv_len;
+            if (curr_tlv_bytes > combined_tlv_bytes - offset) return 0;
+
+            const uint8_t* value = (const uint8_t*)curr_tlv + sizeof(image_tlv_t);
+            if (curr_tlv->tlv_type == IMAGE_TLV_SHA512 && curr_tlv->tlv_len == IMAGE_TLV_SHA512_SIZE) {
+                sha512 = value;
+            } else if (curr_tlv->tlv_type == IMAGE_TLV_ED25519_SIG && curr_tlv->tlv_len == IMAGE_TLV_ED25519_SIG_SIZE) {
+                signature = value;
+            }
+
+            offset += curr_tlv_bytes;
+        }
+        if (sha512 == NULL || signature == NULL) return 0;
+
+        // Verify hash
+        uint8_t hash[IMAGE_TLV_SHA512_SIZE];
+        crypto_hash(hash, (const uint8_t*)header, header->ih_hdr_size + header->ih_img_size);
+        if (memcmp(hash, sha512, sizeof(hash))) return 0;
+
+        // Verify signature
+        uint8_t signed_msg[IMAGE_TLV_ED25519_SIG_SIZE + IMAGE_TLV_SHA512_SIZE];
+        uint8_t opened_msg[sizeof(signed_msg)];
+        uint64_t opened_len;
+
+        memcpy(signed_msg, signature, IMAGE_TLV_ED25519_SIG_SIZE);
+        memcpy(signed_msg + IMAGE_TLV_ED25519_SIG_SIZE, hash, IMAGE_TLV_SHA512_SIZE);
+        if (crypto_sign_open(opened_msg, &opened_len, signed_msg, sizeof(signed_msg), SIGNING_PUBLIC_KEY) != 0) return 0;       
+    }
+    return 1;
 }

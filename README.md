@@ -6,7 +6,7 @@ This project is intended to support all of Sunswift Racing 8's electronic contro
 
 ### Features
 1. ISO-TP over CAN/CAN-FD and UDS spec compatability including security_control implementation which requires an ED25519 private key to prove validity of the client. This includes using true RNG hardware (if supported) to generate a tester seed. 
-2. Firmware integrity and authenticity checking via SHA256 hashes and ED25519 digital signatures (separate to the security_control one for extra security)
+2. Firmware integrity and authenticity checking via SHA512 hashes and ED25519 digital signatures (separate to the security_control one for extra security)
 3. Dual-slot flash layout which enables safe rollback of new firmware
 4. ECU Node ID baked into bootloader to confirm the right firmware is flashed 
 5. Heartbeat mechanisms to detect against CAN/CAN-FD setting changes (TODO)
