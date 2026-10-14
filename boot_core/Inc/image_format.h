@@ -19,13 +19,15 @@
 
 // HEADER structures =================================================================
 #define IMAGE_MAGIC 0xb0fe673d
-#define IMAGE_HEADER_SIZE 16
+// Vector table must be aligned to power of 2 >= number of vectors * 4. on h743 it's 1024 
+#define IMAGE_HEADER_SIZE 1024
 
 // 4 bytes
 typedef struct __attribute__((packed)) {
     uint8_t iv_major;
     uint8_t iv_minor;
-    uint16_t iv_revision;
+    uint8_t iv_revision;
+    uint8_t iv_reserved;
 } image_version_t;
 
 // 16 bytes
@@ -36,6 +38,7 @@ typedef struct __attribute__((packed)) {
     uint32_t ih_img_size;
     image_version_t ih_img_ver;
 } image_header_t;
+_Static_assert(sizeof(image_header_t) <= IMAGE_HEADER_SIZE, "image header doesn't fit in its padded size");
 
 // TLV structures ====================================================================
 #define IMAGE_TLV_INFO_MAGIC 0xcd34

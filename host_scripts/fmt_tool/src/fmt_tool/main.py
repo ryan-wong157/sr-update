@@ -11,7 +11,9 @@ from pathlib import Path
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-HEADER_FORMAT = "<IHHIBBH"
+HEADER_FORMAT = "<IHHIBBBx" # x is the reserved byte in the version
+# Header is padded out to this so the binary's vector table is aligned, must match IMAGE_HEADER_SIZE
+HEADER_PADDED_SIZE_BYTES = 1024
 TLV_HEADER_FORMAT = "<HH"
 TL_FORMAT = "<HH"
 
@@ -28,14 +30,14 @@ def prep_header(ecu_id: int, image_size: int) -> bytes:
     header = struct.pack(
         HEADER_FORMAT, 
         HEADER_MAGIC, 
-        struct.calcsize(HEADER_FORMAT), 
+        HEADER_PADDED_SIZE_BYTES, 
         ecu_id,
         image_size,
         1, # major
         0, # minor
-        0 # version
+        0 # revision
     )
-    return header
+    return header.ljust(HEADER_PADDED_SIZE_BYTES, b"\x00")
 
 def prep_sha512(path: Path, header: bytes) -> bytes:
     digest = hashes.Hash(hashes.SHA512())

@@ -42,6 +42,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+
+# Link time optimisation
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+
 project(${CMAKE_PROJECT_NAME})
 enable_language(C ASM)
 

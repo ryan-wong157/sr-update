@@ -2,6 +2,7 @@
 #include "uds/uds_codes.h"
 #include "uds/srv_session_control.h"
 #include "isotp/isotp.h"
+#include "image_handler.h"
 #include "bootloader_version.h"
 #include "common_config/uds_config.h"
 
@@ -49,9 +50,10 @@ sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
                 tx_buf[tx_index++] = rx_buf[rx_index];
                 tx_buf[tx_index++] = rx_buf[rx_index + 1];
                 // TODO: replace this with current app major.minor.patch, or 0.0.0 if no app exists
-                tx_buf[tx_index++] = 0;
-                tx_buf[tx_index++] = 0;
-                tx_buf[tx_index++] = 0;
+                const image_version_t* vers = get_image_version(SLOT_A);
+                tx_buf[tx_index++] = vers->iv_major;
+                tx_buf[tx_index++] = vers->iv_minor;
+                tx_buf[tx_index++] = vers->iv_revision;
                 any_supported = 1;
                 break;
             case DID_CURR_DIAG_SESS:

@@ -18,13 +18,17 @@ ecu-id is a 12 bit (3 hex digit) value which corresponds to the type of ECU this
 ```C
 // HEADER structures =================================================================
 #define IMAGE_MAGIC 0xb0fe673d
-#define IMAGE_HEADER_SIZE 16
+// The header struct is padded out to this size so the binary after it starts on a vector table
+// alignment boundary (VTOR needs the table aligned to its size rounded up to a power of 2).
+// 1024 covers every supported MCU: the G4s need 512 (118 vectors), the H743 needs 1024
+#define IMAGE_HEADER_SIZE 1024
 
 // 4 bytes
 typedef struct __attribute__((packed)) {
     uint8_t iv_major;
     uint8_t iv_minor;
-    uint16_t iv_revision;
+    uint8_t iv_revision;
+    uint8_t iv_reserved; // keeps the header 16 bytes so the binary after it stays aligned
 } image_version_t;
 
 // 16 bytes
@@ -57,8 +61,8 @@ typedef struct  __attribute__((packed)) {
 ```
 
 The final image is as follows:
-1. Header
-2. Binary payload
+1. Header, padded with zeros to 1024 bytes (`ih_hdr_size` is 1024) so the binary's vector table is aligned on every supported MCU
+2. Binary payload, which must be linked to run at slot A start + 1024 (0x400)
 3. TLV header
 4. Type-length struct
 5. Value
