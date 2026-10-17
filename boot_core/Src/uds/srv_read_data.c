@@ -49,11 +49,17 @@ sr_errno_t x22_read_data_handler(const uint8_t* rx_buf, uint32_t rx_length, uint
             case DID_APP_VER:
                 tx_buf[tx_index++] = rx_buf[rx_index];
                 tx_buf[tx_index++] = rx_buf[rx_index + 1];
-                // TODO: replace this with current app major.minor.patch, or 0.0.0 if no app exists
-                const image_version_t* vers = get_image_version(SLOT_A);
-                tx_buf[tx_index++] = vers->iv_major;
-                tx_buf[tx_index++] = vers->iv_minor;
-                tx_buf[tx_index++] = vers->iv_revision;
+                // 0.0.0 if there is no valid app in slot A
+                if (is_image_valid(SLOT_A, 0)) {
+                    const image_version_t* vers = get_image_version(SLOT_A);
+                    tx_buf[tx_index++] = vers->iv_major;
+                    tx_buf[tx_index++] = vers->iv_minor;
+                    tx_buf[tx_index++] = vers->iv_revision;
+                } else {
+                    tx_buf[tx_index++] = 0;
+                    tx_buf[tx_index++] = 0;
+                    tx_buf[tx_index++] = 0;
+                }
                 any_supported = 1;
                 break;
             case DID_CURR_DIAG_SESS:

@@ -26,16 +26,17 @@ TLV_SHA512_ID = 0x01
 TLV_ED25519_SIG_ID = 0x02
 gh_private_key_base64 = str(os.environ.get("PRIVATE_SIGNING_KEY"))
 
-def prep_header(ecu_id: int, image_size: int) -> bytes:
+def prep_header(ecu_id: int, image_size: int, version: tuple[int, int, int]) -> bytes:
+    major, minor, revision = version
     header = struct.pack(
-        HEADER_FORMAT, 
-        HEADER_MAGIC, 
-        HEADER_PADDED_SIZE_BYTES, 
+        HEADER_FORMAT,
+        HEADER_MAGIC,
+        HEADER_PADDED_SIZE_BYTES,
         ecu_id,
         image_size,
-        1, # major
-        0, # minor
-        0 # revision
+        major,
+        minor,
+        revision
     )
     return header.ljust(HEADER_PADDED_SIZE_BYTES, b"\x00")
 
@@ -62,9 +63,23 @@ def validate_ecu_id(id: str) -> int:
         raise argparse.ArgumentTypeError(f"0x{val:X} out of 12-bit range (0x000–0xFFF)")
     return val
 
+def validate_version(version: str) -> tuple[int, int, int]:
+    # strip so a version read straight out of a file with a trailing newline still works
+    parts = version.strip().split(".")
+    try:
+        if len(parts) != 3:
+            raise ValueError
+        values = tuple(int(part) for part in parts)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"must be major.minor.revision (e.g. 1.2.3), got '{version}'")
+    if any(value < 0 or value > 0xFF for value in values):
+        raise argparse.ArgumentTypeError(f"each part of the version must be 0-255, got '{version}'")
+    return values
+
 def main():
     parser = argparse.ArgumentParser(description="SR-update image format tool")
     parser.add_argument("--ecu-id", type=validate_ecu_id, required=True, help="12 bit ECU ID as hex (e.g. 0x111)")
+    parser.add_argument("--image-version", type=validate_version, required=True, help="Firmware version as major.minor.revision, each 0-255 (e.g. 1.2.3)")
     parser.add_argument("--key-path", default=None, help="Relative path to base64 ed25519 private key file if exists")
     parser.add_argument("target", help="Relative path to binary")
     args = parser.parse_args()
@@ -90,7 +105,7 @@ def main():
     new_file = bin_path.parent / f"{bin_name}-img.bin"
     
     with open(bin_path, mode="rb") as old_bin, open(new_file, mode="wb") as new_bin:
-        header = prep_header(args.ecu_id, bin_size)
+        header = prep_header(args.ecu_id, bin_size, args.image_version)
         new_bin.write(header)
         while True:
             chunk = old_bin.read(4096)

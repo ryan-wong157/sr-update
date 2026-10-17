@@ -4,7 +4,10 @@ A simple python script which signs th SHA512 hash of a given binary file, append
 ## Usage
 ```bash
 # In this directory
-uv run fmt-tool --ecu-id 0x123 [--key-path ./path/to/key] ./path/to/binary
+uv run fmt-tool --ecu-id 0x123 --image-version 1.2.3 [--key-path ./path/to/key] ./path/to/binary
+
+# e.g. in CI, with the version kept in a VERSION file holding just "1.2.3"
+uv run fmt-tool --ecu-id 0x123 --image-version "$(cat VERSION)" ./path/to/binary
 
 # OR, install as a tool to use anywhere
 uv tool install . # use in this directory
@@ -12,6 +15,8 @@ uv tool install . # use in this directory
 If a key path is not supplied, it uses an environment variable called PRIVATE_SIGNING_KEY. Both the file at the key path and the environment variable should hold the 32 byte private ed25519 key used to sign the binary in base64 encoding.
 
 ecu-id is a 12 bit (3 hex digit) value which corresponds to the type of ECU this firmware is going to be flashed on.
+
+image-version is the firmware's major.minor.revision, each part 0-255. The bootloader refuses (and erases) an update whose version is older than the image it is replacing; an equal version is accepted.
 
 ## Header and TLV Structure
 
