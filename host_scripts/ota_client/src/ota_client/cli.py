@@ -1,6 +1,8 @@
 import argparse
 import logging
 import os
+import socket
+import struct
 import threading
 import time
 import isotp
@@ -27,6 +29,53 @@ FW_SLOT_SIZE_BYTES = FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES # slot B, wher
 # FW_ACTUAL_SIZE_BYTES: the trailer has a page of its own at the end of each slot (and slot B's
 # first page is the swap offset), so the image gets every other page and nothing is taken off for the trailer
 FW_MAX_IMAGE_SIZE_BYTES = (FW_SLOT_A_SIZE_PAGES - 1) * FLASH_PAGE_SIZE_BYTES # 50 KB
+
+# Mirrors image_header_t in boot_core/Inc/image_format.h
+IMAGE_MAGIC = 0xB0FE673D
+IMAGE_HEADER_STRUCT = struct.Struct("<IHHIBBBx")
+
+# Test boot handshake, mirrors app_sdk/sr_app.c. Raw CAN frames, not ISO-TP
+HANDSHAKE_TESTER_ID = 0x1F000FFD
+HANDSHAKE_STATUS_WAITING = 0x00
+HANDSHAKE_STATUS_CONFIRMED = 0x01
+HANDSHAKE_STATUS_FAILED = 0x02
+# covers the bootloader's swap plus the app starting up. Past the 20 s IWDG the ECU has reverted anyway
+HANDSHAKE_WAIT_S = 30.0
+HANDSHAKE_RESULT_WAIT_S = 2.0
+
+CAN_EFF_FLAG = 0x80000000
+CAN_EFF_MASK = 0x1FFFFFFF
+CAN_FRAME_FMT = "=IB3x8s"
+
+
+def handshake_ecu_id(ecu_id: int) -> int:
+    return 0x1F000FFD | (ecu_id << 12)
+
+
+class HandshakeSocket:
+    """Raw SocketCAN socket that only sees one ECU's handshake frames"""
+    def __init__(self, interface: str, ecu_id: int):
+        self.sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
+        can_filter = struct.pack("=II", handshake_ecu_id(ecu_id) | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
+        self.sock.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, can_filter)
+        self.sock.bind((interface,))
+
+    def close(self) -> None:
+        self.sock.close()
+
+    def send(self, can_id: int, data: bytes) -> None:
+        self.sock.send(struct.pack(CAN_FRAME_FMT, can_id | CAN_EFF_FLAG, len(data), data.ljust(8, b"\x00")))
+
+    def recv(self, timeout: float) -> bytes | None:
+        """Data of the next handshake frame from the ECU, None on timeout"""
+        self.sock.settimeout(max(timeout, 0))
+        try:
+            raw = self.sock.recv(struct.calcsize(CAN_FRAME_FMT))
+        except (TimeoutError, BlockingIOError):
+            return None
+        _, dlc, data = struct.unpack(CAN_FRAME_FMT, raw)
+        return data[:dlc]
+
 
 FLASH_FILL_BYTE = 0xAA
 FLASH_DEFAULT_SIZE_BYTES = 50000 # just under FW_MAX_IMAGE_SIZE_BYTES
@@ -86,9 +135,10 @@ def prompt_yes_no(text: str, default: bool) -> bool:
 # Test client
 # =================================================================================================
 class TestCli:
-    def __init__(self, client: Client, conn: IsoTPSocketConnection, keepalive: bool):
+    def __init__(self, client: Client, conn: IsoTPSocketConnection, keepalive: bool, interface: str = "can0"):
         self.client = client
         self.conn = conn
+        self.interface = interface
         # udsoncan's client is not thread safe, the keepalive thread shares it with the menu
         self.lock = threading.Lock()
         self.keepalive_enabled = keepalive
@@ -219,6 +269,82 @@ class TestCli:
     def flash(self) -> None:
         print(f"Writes 0x{FLASH_FILL_BYTE:02X} bytes into slot B, max image size is {FW_MAX_IMAGE_SIZE_BYTES} bytes")
         size = prompt_int("Number of bytes", FLASH_DEFAULT_SIZE_BYTES)
+        self.download(bytes([FLASH_FILL_BYTE]) * size)
+
+    def flash_file(self) -> None:
+        path = Path(prompt("Path to fmt_tool image (e.g. app-img.bin)"))
+        if not path.is_file():
+            print(f"{path.resolve()} not found")
+            return
+        image = path.read_bytes()
+
+        if len(image) < IMAGE_HEADER_STRUCT.size:
+            print("File is too small to be an image")
+            return
+        magic, hdr_size, ecu_id, img_size, major, minor, revision = IMAGE_HEADER_STRUCT.unpack_from(image)
+        if magic != IMAGE_MAGIC:
+            print(f"Bad header magic 0x{magic:08X}, was this made by fmt_tool?")
+            return
+        if len(image) > FW_MAX_IMAGE_SIZE_BYTES:
+            print(f"Image is {len(image)} bytes, max is {FW_MAX_IMAGE_SIZE_BYTES}")
+            return
+        new_version = f"{major}.{minor}.{revision}"
+        print(f"ECU ID 0x{ecu_id:03X}, version {new_version}, {img_size} byte binary, {len(image)} bytes total")
+
+        self.download(image)
+
+        # what's in slot A now is what the ECU falls back to if the update doesn't stick
+        with self.lock:
+            old = self.client.read_data_by_identifier_first(0xF181)
+        old_version = ".".join(str(part) for part in old)
+        old_text = "no previous image" if old_version == "0.0.0" else f"version {old_version}"
+
+        # open before the reset so the first handshake frame can't be missed
+        handshake = HandshakeSocket(self.interface, ecu_id)
+        try:
+            with self.lock:
+                self.client.ecu_reset(0x01)
+            print(f"ECU is resetting to install the update, waiting up to {HANDSHAKE_WAIT_S:.0f} s for the handshake")
+            self.confirm_update(handshake, ecu_id, new_version, old_text)
+        finally:
+            handshake.close()
+
+    def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> None:
+        """Blocks on the test boot handshake and reports whether the update stuck"""
+        deadline = time.monotonic() + HANDSHAKE_WAIT_S
+        data = None
+        while time.monotonic() < deadline:
+            data = handshake.recv(deadline - time.monotonic())
+            if data is not None and len(data) >= 4 and data[0] == HANDSHAKE_STATUS_WAITING:
+                break
+            data = None
+        if data is None:
+            print(f"No handshake: the update was rejected or failed to boot, ECU has rolled back to {old_text}")
+            return
+
+        running = ".".join(str(part) for part in data[1:4])
+        if running != new_version:
+            print(f"Warning: ECU is test booting version {running}, expected {new_version}")
+        print(f"ECU is test booting {running}, confirming")
+
+        # resend the confirm until the ECU answers with a result, a frame can get lost on the bus
+        deadline = time.monotonic() + HANDSHAKE_RESULT_WAIT_S
+        confirm = bytes([(ecu_id >> 8) & 0xFF, ecu_id & 0xFF])
+        while time.monotonic() < deadline:
+            handshake.send(HANDSHAKE_TESTER_ID, confirm)
+            data = handshake.recv(0.2)
+            if data is None or len(data) < 4 or data[0] == HANDSHAKE_STATUS_WAITING:
+                continue
+            if data[0] == HANDSHAKE_STATUS_CONFIRMED:
+                print(f"Handshake successful, ECU confirmed and is now running version {running}")
+            else:
+                print(f"ECU failed to confirm the image, it has rolled back to {old_text}")
+            return
+        print(f"ECU never answered the confirm, it rolls back to {old_text} when its watchdog fires")
+
+    def download(self, image: bytes) -> None:
+        """0x34 / 0x36 / 0x37 of image into slot B"""
+        size = len(image)
         if prompt_yes_no("Enter programming session and unlock first", True):
             with self.lock:
                 self.client.change_session(SESSION_PROGRAMMING)
@@ -238,7 +364,6 @@ class TestCli:
             print("Block size must be at least 1")
             return
 
-        image = bytes([FLASH_FILL_BYTE]) * size
         num_blocks = (size + block_size - 1) // block_size
         start = time.monotonic()
         seq_counter = 1
@@ -317,6 +442,7 @@ class TestCli:
             ("7", "Security access: send a bad key (0x27)", self.send_bad_key),
             ("8", "Tester present (0x3E)", self.tester_present),
             ("9", f"Flash 0x{FLASH_FILL_BYTE:02X} image: full sequence (0x34, 0x36, 0x37)", self.flash),
+            ("f", "Flash a fmt_tool image file and confirm it (0x34, 0x36, 0x37, reset, handshake)", self.flash_file),
             ("10", "Request download only (0x34)", self.request_download),
             ("11", "Transfer a single block (0x36)", self.transfer_block),
             ("12", "Request transfer exit only (0x37)", self.transfer_exit),
@@ -371,7 +497,7 @@ def main():
     # udsoncan caps every request at 5 s total by default, which cuts P2* short
     config["request_timeout"] = None
     with Client(conn, config) as client:
-        TestCli(client, conn, keepalive=not args.no_keepalive).run()
+        TestCli(client, conn, keepalive=not args.no_keepalive, interface=args.interface).run()
 
 
 if __name__ == "__main__":
