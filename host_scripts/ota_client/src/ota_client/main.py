@@ -13,8 +13,8 @@ from udsoncan.configs import default_client_config
 from udsoncan.typing import ClientConfig
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-RXID = 0x1F001000
-TXID = 0x1F000000
+RXID = 0x1F001FFE
+TXID = 0x1F000FFE
 
 udsoncan.setup_logging()
 
