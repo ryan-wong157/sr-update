@@ -5,7 +5,6 @@
 
 #include "main.h"
 #include "rtc.h"
-#include "iwdg.h"
 #include "config/flash_config.h"
 #include "mcu_interface/sys_misc.h"
 
@@ -80,6 +79,24 @@ uint32_t sr_read_boot_magic() {
     return HAL_RTCEx_BKUPRead(rtc_handle, RTC_BKP_DR0);
 }
 
-void start_iwdg() {
-    MX_IWDG_Init();
+void sr_iwdg_start(uint32_t timeout_ms) {
+    __HAL_DBGMCU_FREEZE_IWDG();
+
+    uint32_t ticks = timeout_ms * (LSI_VALUE / 1000U);
+    uint32_t prescaler = IWDG_PRESCALER_4;
+    uint32_t divider = 4;
+    while (ticks / divider > IWDG_RLR_RL && prescaler < IWDG_PRESCALER_256) {
+        prescaler++;
+        divider *= 2;
+    }
+    uint32_t reload = ticks / divider;
+    if (reload > IWDG_RLR_RL) reload = IWDG_RLR_RL;
+    if (reload == 0) reload = 1;
+
+    IWDG_HandleTypeDef iwdg = {0};
+    iwdg.Instance = IWDG;
+    iwdg.Init.Prescaler = prescaler;
+    iwdg.Init.Window = IWDG_WINDOW_DISABLE;
+    iwdg.Init.Reload = reload;
+    HAL_IWDG_Init(&iwdg);
 }

@@ -6,7 +6,8 @@
 #include "mcu_interface/sys_misc.h"
 #include "mcu_interface/led_blink.h"
 #include "uds/uds.h"
-#include "image_handler.h" 
+#include "image_handler.h"
+#include "common_config/boot_config.h"
 
 // Sets up slot A's trailer for a revert, clears the revert marker in slot B's trailer, then swaps back.
 static sr_errno_t start_revert(void) {
@@ -122,10 +123,11 @@ int main(void) {
     } else if (sr_read_boot_magic() == BOOT_HOLD_MAGIC) {
         sr_write_boot_magic(0);
         sr_led_blink();
-        sr_uds_server_start();
+        sr_uds_server_start(0);
     }
 
-    // TODO: start IWDG
+
+    // Try to boot into slot A here
     if (boot_allowed && is_image_valid(SLOT_A, 0)) {
         if (confirm_revert) {
             // image ok goes first, copy done without it would get reverted again
@@ -133,11 +135,16 @@ int main(void) {
             if (retval == SR_OK) retval = set_copy_done(SLOT_A);
             if (retval != SR_OK) sr_reset_mcu();
         }
+        // On first test, start the watchdog
+        if (is_trailer_magic_set(SLOT_A) && get_swap_info(SLOT_A) == SWAP_TYPE_TEST
+            && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
+            sr_iwdg_start(CFG_TEST_BOOT_IWDG_TIMEOUT_MS);
+        }
         sr_peripherals_deinit();
         jump_to_app(FW_SLOT_A_START_ADDRESS + IMAGE_HEADER_SIZE);
     }
 
-    // Slot A's image is not valid or a revert had nothing to go back to, fallback to UDS. TODO: broadcast error msg
-    sr_uds_server_start();
+    // slot A image invalid, or revert invalid. Broadcast help message
+    sr_uds_server_start(1);
     return 0;
 }
