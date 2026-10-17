@@ -19,13 +19,17 @@ from udsoncan.exceptions import (
 # NOTE: importing main also runs its udsoncan.setup_logging() call
 from .main import RXID, TXID, configure, get_auth_key
 
-# Mirrors mcu/stm32g431cb/Core/Inc/config/flash_config.h
-FW_SLOT_SIZE_BYTES = 27 * 2048 # 54 KB
-TRAILER_SIZE_BYTES = 472
-FW_MAX_IMAGE_SIZE_BYTES = FW_SLOT_SIZE_BYTES - TRAILER_SIZE_BYTES
+# Mirrors mcu/stm32g431cb/Core/Inc/config/flash_config.h and boot_core/Inc/image_format.h
+FLASH_PAGE_SIZE_BYTES = 2048
+FW_SLOT_A_SIZE_PAGES = 26
+FW_SLOT_B_SIZE_PAGES = 27
+FW_SLOT_SIZE_BYTES = FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES # slot B, where downloads go: 54 KB
+# FW_ACTUAL_SIZE_BYTES: the trailer has a page of its own at the end of each slot (and slot B's
+# first page is the swap offset), so the image gets every other page and nothing is taken off for the trailer
+FW_MAX_IMAGE_SIZE_BYTES = (FW_SLOT_A_SIZE_PAGES - 1) * FLASH_PAGE_SIZE_BYTES # 50 KB
 
 FLASH_FILL_BYTE = 0xAA
-FLASH_DEFAULT_SIZE_BYTES = 54000 # just under 54 KB, and under FW_MAX_IMAGE_SIZE_BYTES
+FLASH_DEFAULT_SIZE_BYTES = 50000 # just under FW_MAX_IMAGE_SIZE_BYTES
 
 # Mirrors boot_core/Inc/common_config/uds_config.h
 S3_SERVER_MS = 5000
