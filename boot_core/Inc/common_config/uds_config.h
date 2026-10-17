@@ -19,4 +19,9 @@
 
 #define CFG_MAX_x27_ATTEMPTS 3
 #define CFG_RETRY_TIMEOUT 60000 // 1min
+
+
+#define CFG_DISTRESS_PERIOD_MS 1000
+// Priority 0x1F, msg ID 0xFFF
+#define CFG_DISTRESS_TX_ID (0x1F000000u | ((uint32_t)(ECU_ID) << 12) | 0xFFFu)
 #endif

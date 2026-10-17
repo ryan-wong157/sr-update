@@ -1,3 +1,4 @@
+#include <string.h>
 #include "uds/uds.h"
 #include "uds/srv_test.h"
 #include "uds/srv_session_control.h"
@@ -7,6 +8,8 @@
 #include "uds/srv_download.h"
 #include "uds/uds_codes.h"
 #include "isotp/isotp.h"
+#include "mcu_interface/can_driver.h"
+#include "mcu_interface/sys_misc.h"
 #include "common_config/uds_config.h"
 
 // tx and rx buffers used by isotp layer to put stuff in
@@ -17,8 +20,9 @@ static uint8_t isotp_rx_buf[CFG_UDS_RX_BUF_SIZE];
 static uint8_t uds_rx_buf[CFG_UDS_RX_BUF_SIZE];
 
 static sr_errno_t uds_dispatch(uint32_t length);
+static void distress_poll(uint32_t* last_sent_ms);
 
-sr_errno_t sr_uds_server_start() {
+sr_errno_t sr_uds_server_start(uint8_t broadcast_distress) {
     sr_errno_t retval = sr_isotp_start(
         isotp_tx_buf, 
         sizeof(isotp_tx_buf), 
@@ -29,8 +33,12 @@ sr_errno_t sr_uds_server_start() {
         return retval;
     }
 
+    uint32_t last_distress_ms = 0;
     while (1) {
         s3_check_timeout();
+        if (broadcast_distress) {
+            distress_poll(&last_distress_ms);
+        }
 
         uint32_t bytes_received;
         retval = sr_isotp_rx(uds_rx_buf, sizeof(uds_rx_buf), &bytes_received);
@@ -58,6 +66,17 @@ sr_errno_t sr_uds_server_start() {
                 return retval;
         }
     }
+}
+
+// Sends the distress frame if a period has passed. Best effort, a failed send is just tried next period
+static void distress_poll(uint32_t* last_sent_ms) {
+    if (sr_millis() - *last_sent_ms < CFG_DISTRESS_PERIOD_MS) {
+        return;
+    }
+    *last_sent_ms = sr_millis();
+    uint8_t frame[8];
+    memset(frame, 0, sizeof(frame));
+    sr_fdcan_tx_blocking(CFG_DISTRESS_TX_ID, frame, sizeof(frame));
 }
 
 static sr_errno_t uds_dispatch(uint32_t length) {
