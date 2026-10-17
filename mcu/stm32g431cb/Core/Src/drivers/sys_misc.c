@@ -5,6 +5,7 @@
 
 #include "main.h"
 #include "rtc.h"
+#include "iwdg.h"
 #include "config/flash_config.h"
 #include "mcu_interface/sys_misc.h"
 
@@ -77,4 +78,8 @@ void sr_write_boot_magic(uint32_t data) {
 
 uint32_t sr_read_boot_magic() {
     return HAL_RTCEx_BKUPRead(rtc_handle, RTC_BKP_DR0);
+}
+
+void start_iwdg() {
+    MX_IWDG_Init();
 }

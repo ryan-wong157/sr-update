@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fdcan.h"
+#include "iwdg.h"
 #include "rng.h"
 #include "rtc.h"
 #include "gpio.h"

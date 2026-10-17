@@ -36,4 +36,6 @@ void sr_write_boot_magic(uint32_t data);
 // read from backup reg
 uint32_t sr_read_boot_magic();
 
+void start_iwdg();
+
 #endif
