@@ -130,6 +130,10 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+    HAL_Delay(500);
+    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+    HAL_Delay(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }

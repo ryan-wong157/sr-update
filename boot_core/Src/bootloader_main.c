@@ -117,7 +117,11 @@ int main(void) {
             }
             confirm_revert = 1;
         } else {
-            // nothing valid to revert to, don't boot the unconfirmed image
+            // Nothing in slot B to revert to + slot A bad, delete everything   
+            retval = erase_slot(SLOT_A);
+            if (retval != SR_OK) {
+                sr_reset_mcu();
+            }
             boot_allowed = 0;
         }
     } else if (sr_read_boot_magic() == BOOT_HOLD_MAGIC) {

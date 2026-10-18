@@ -17,6 +17,7 @@ __attribute__((naked, noreturn))
 static void branch_to(uint32_t msp, uint32_t reset_handler) {
     __asm volatile(
         "msr msp, r0\n"
+        "cpsie i\n"
         "bx  r1\n"
     );
 }
