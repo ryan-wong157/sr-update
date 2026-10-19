@@ -4,6 +4,7 @@
 #include "image_format.h"
 
 #define SWAP_TYPE_TEST 0x01u
+#define SWAP_TYPE_REVERT 0x02u
 
 static volatile const image_trailer_t* const trailer = (volatile const image_trailer_t*)TRAILER_A_START_ADDRESS;
 static const image_header_t* const header = (const image_header_t*)FW_SLOT_A_START_ADDRESS;
@@ -16,9 +17,10 @@ static const image_header_t* const header = (const image_header_t*)FW_SLOT_A_STA
 #define STATUS_CONFIRMED 0x01u
 #define STATUS_FAILED 0x02u
 
-static uint8_t is_test_boot(void) {
+
+static uint8_t is_unconfirmed_boot(void) {
     return trailer->trailer_magic.magic == TRAILER_MAGIC
-        && trailer->trailer_swap_info.status == SWAP_TYPE_TEST
+        && (trailer->trailer_swap_info.status == SWAP_TYPE_TEST || trailer->trailer_swap_info.status == SWAP_TYPE_REVERT)
         && trailer->trailer_copy_done.status == 0x01
         && trailer->trailer_image_ok.status != 0x01;
 }
@@ -80,7 +82,7 @@ static int write_image_ok(void) {
 }
 
 void sr_app_confirm_boot(FDCAN_HandleTypeDef* hfdcan) {
-    if (!is_test_boot()) {
+    if (!is_unconfirmed_boot()) {
         return;
     }
 

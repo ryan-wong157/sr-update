@@ -81,6 +81,8 @@ def main():
     parser.add_argument("--ecu-id", type=validate_ecu_id, required=True, help="12 bit ECU ID as hex (e.g. 0x111)")
     parser.add_argument("--image-version", type=validate_version, required=True, help="Firmware version as major.minor.revision, each 0-255 (e.g. 1.2.3)")
     parser.add_argument("--key-path", default=None, help="Relative path to base64 ed25519 private key file if exists")
+    # TEMPORARY: signs with a throwaway key so the bootloader's signature rejection can be tested
+    parser.add_argument("--random-key", action="store_true", help="Sign with a newly generated random ed25519 key (testing only)")
     parser.add_argument("target", help="Relative path to binary")
     args = parser.parse_args()
         
@@ -90,7 +92,10 @@ def main():
         sys.exit(1)
     
     try:
-        if args.key_path and Path(args.key_path).exists():
+        if args.random_key:
+            private_key = Ed25519PrivateKey.generate()
+            print("WARNING: signing with a random key, this image will fail signature verification")
+        elif args.key_path and Path(args.key_path).exists():
             raw_bytes = base64.b64decode(Path(args.key_path).read_text())
             private_key = Ed25519PrivateKey.from_private_bytes(raw_bytes)    
         else:

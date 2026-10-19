@@ -34,13 +34,13 @@ FW_MAX_IMAGE_SIZE_BYTES = (FW_SLOT_A_SIZE_PAGES - 1) * FLASH_PAGE_SIZE_BYTES # 5
 IMAGE_MAGIC = 0xB0FE673D
 IMAGE_HEADER_STRUCT = struct.Struct("<IHHIBBBx")
 
-# Test boot handshake, mirrors app_sdk/sr_app.c. Raw CAN frames, not ISO-TP
+# Test boot and revert handshake, mirrors app_sdk/sr_app.c. Raw CAN frames, not ISO-TP
 HANDSHAKE_TESTER_ID = 0x1F000FFD
 HANDSHAKE_STATUS_WAITING = 0x00
 HANDSHAKE_STATUS_CONFIRMED = 0x01
 HANDSHAKE_STATUS_FAILED = 0x02
-# covers the bootloader's swap plus the app starting up. Past the 20 s IWDG the ECU has reverted anyway
-HANDSHAKE_WAIT_S = 30.0
+# covers a new image that never handshakes: the 20 s IWDG, the revert swap back, then the old app's revert handshake
+HANDSHAKE_WAIT_S = 45.0
 HANDSHAKE_RESULT_WAIT_S = 2.0
 
 CAN_EFF_FLAG = 0x80000000
@@ -310,7 +310,7 @@ class TestCli:
             handshake.close()
 
     def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> None:
-        """Blocks on the test boot handshake and reports whether the update stuck"""
+        """Blocks on the test boot (or revert) handshake and reports whether the update stuck"""
         deadline = time.monotonic() + HANDSHAKE_WAIT_S
         data = None
         while time.monotonic() < deadline:
@@ -319,13 +319,16 @@ class TestCli:
                 break
             data = None
         if data is None:
-            print(f"No handshake: the update was rejected or failed to boot, ECU has rolled back to {old_text}")
+            print(f"No handshake: the update was rejected or failed to boot, ECU should still be on {old_text}")
             return
 
+        # a reverted app handshakes too, the only tell is that the version didn't change to the new one
         running = ".".join(str(part) for part in data[1:4])
-        if running != new_version:
-            print(f"Warning: ECU is test booting version {running}, expected {new_version}")
-        print(f"ECU is test booting {running}, confirming")
+        reverted = running != new_version
+        if reverted:
+            print(f"ECU reverted to version {running} instead of booting {new_version}, confirming the revert")
+        else:
+            print(f"ECU is test booting {running}, confirming")
 
         # resend the confirm until the ECU answers with a result, a frame can get lost on the bus
         deadline = time.monotonic() + HANDSHAKE_RESULT_WAIT_S
@@ -335,7 +338,9 @@ class TestCli:
             data = handshake.recv(0.2)
             if data is None or len(data) < 4 or data[0] == HANDSHAKE_STATUS_WAITING:
                 continue
-            if data[0] == HANDSHAKE_STATUS_CONFIRMED:
+            if reverted:
+                print(f"Update failed, ECU is running version {running}")
+            elif data[0] == HANDSHAKE_STATUS_CONFIRMED:
                 print(f"Handshake successful, ECU confirmed and is now running version {running}")
             else:
                 print(f"ECU failed to confirm the image, it has rolled back to {old_text}")

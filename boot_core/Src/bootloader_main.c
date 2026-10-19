@@ -103,7 +103,8 @@ int main(void) {
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
-    } else if (is_trailer_magic_set(SLOT_A) && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
+    } else if (is_trailer_magic_set(SLOT_A) && get_swap_info(SLOT_A) == SWAP_TYPE_TEST
+               && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
         // revert
         if (is_image_valid(SLOT_B, 0)) {
             // need to write copy_done and magic in B trailer to handle power off if tralier A hasn't been fully written yet
@@ -124,6 +125,14 @@ int main(void) {
             }
             boot_allowed = 0;
         }
+    } else if (is_trailer_magic_set(SLOT_A) && get_swap_info(SLOT_A) == SWAP_TYPE_REVERT
+               && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
+        // reverted app never got its handshake confirmed so delete and UDS fallback
+        retval = erase_slot(SLOT_A);
+        if (retval != SR_OK) {
+            sr_reset_mcu();
+        }
+        boot_allowed = 0;
     } else if (sr_read_boot_magic() == BOOT_HOLD_MAGIC) {
         sr_write_boot_magic(0);
         sr_led_blink();
@@ -134,13 +143,12 @@ int main(void) {
     // Try to boot into slot A here
     if (boot_allowed && is_image_valid(SLOT_A, 0)) {
         if (confirm_revert) {
-            // image ok goes first, copy done without it would get reverted again
-            retval = set_image_ok(SLOT_A);
-            if (retval == SR_OK) retval = set_copy_done(SLOT_A);
+            retval = set_copy_done(SLOT_A);
             if (retval != SR_OK) sr_reset_mcu();
         }
-        // On first test, start the watchdog
-        if (is_trailer_magic_set(SLOT_A) && get_swap_info(SLOT_A) == SWAP_TYPE_TEST
+        // On first boot after a test swap or revert, start the watchdog in case the handshake never finishes
+        if (is_trailer_magic_set(SLOT_A)
+            && (get_swap_info(SLOT_A) == SWAP_TYPE_TEST || get_swap_info(SLOT_A) == SWAP_TYPE_REVERT)
             && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
             sr_iwdg_start(CFG_TEST_BOOT_IWDG_TIMEOUT_MS);
         }
