@@ -5,11 +5,12 @@
 #include "mcu_interface/peripherals.h"
 #include "mcu_interface/sys_misc.h"
 #include "mcu_interface/led_blink.h"
+#include "mcu_interface/can_driver.h"
 #include "uds/uds.h"
 #include "image_handler.h"
 #include "common_config/boot_config.h"
 
-// Sets up slot A's trailer for a revert, clears the revert marker in slot B's trailer, then swaps back.
+// Setup slot A trailer, clear slot B trailer, then revert.
 static sr_errno_t start_revert(void) {
     sr_errno_t retval = erase_trailer(SLOT_A);
     if (retval == SR_OK) retval = set_swap_info(SLOT_A, SWAP_TYPE_REVERT);
@@ -19,11 +20,12 @@ static sr_errno_t start_revert(void) {
     if (retval != SR_OK) return retval;
 
     uint32_t swap_size = get_swap_size_pages(SLOT_A);
-    return swap_revert(swap_size - 1, swap_size, 0);
+    retval = swap_revert(swap_size - 1, swap_size, 0);
+    if (retval != SR_OK) return retval;
+    return set_copy_done(SLOT_A);
 }
 
-// Sets up slot A's trailer for a test swap, clears the pending update marker in slot B's
-// trailer, then swaps the update in and marks the copy as done.
+// Setup slot A trailer, clear slot B trailer, then test swap.
 static sr_errno_t start_test_swap(void) {
     sr_errno_t retval = erase_trailer(SLOT_A);
     if (retval == SR_OK) retval = set_swap_info(SLOT_A, SWAP_TYPE_TEST);
@@ -48,6 +50,25 @@ static uint8_t is_update_older(void) {
     return update->iv_revision < current->iv_revision;
 }
 
+// send handshake confirmation to client that new update was rejected.
+static void send_rejection(uint8_t status) {
+    if (sr_fdcan_configure() != SR_OK || sr_fdcan_start() != SR_OK) {
+        return;
+    }
+    uint8_t data[4] = {status, 0, 0, 0};
+    if (is_header_magic_set(SLOT_A)) {
+        const image_version_t* version = get_image_version(SLOT_A);
+        data[1] = version->iv_major;
+        data[2] = version->iv_minor;
+        data[3] = version->iv_revision;
+    }
+    for (int i = 0; i < CFG_REJECTION_REPEATS; i++) {
+        if (sr_fdcan_tx_blocking(CFG_HANDSHAKE_TX_ID, data, sizeof(data)) != SR_OK) {
+            break;
+        }
+    }
+}
+
 int main(void) {
     if (sr_peripherals_init() != SR_OK) {
         sr_reset_mcu();
@@ -55,7 +76,6 @@ int main(void) {
 
     sr_led_blink();
 
-    uint8_t confirm_revert = 0;
     uint8_t boot_allowed = 1;
     sr_errno_t retval;
     if (is_trailer_magic_set(SLOT_A) && !is_copy_done(SLOT_A) && !is_trailer_magic_set(SLOT_B)) {
@@ -75,30 +95,29 @@ int main(void) {
             }
         }
 
-        if (retval == SR_OK && swap_type == SWAP_TYPE_TEST) {
+        if (retval == SR_OK && (swap_type == SWAP_TYPE_TEST || swap_type == SWAP_TYPE_REVERT)) {
             retval = set_copy_done(SLOT_A);
-        } else if (swap_type == SWAP_TYPE_REVERT) {
-            // image ok and copy done get set below once the reverted image is validated
-            confirm_revert = 1;
         }
 
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
-    } else if (is_trailer_magic_set(SLOT_B) && is_copy_done(SLOT_B)) {
+    } else if (is_trailer_magic_set(SLOT_B) && !is_image_ok(SLOT_B) && is_copy_done(SLOT_B)) {
         // revert but powered-off before slot B is erased in the normal revert path
         retval = start_revert();
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
-        confirm_revert = 1;
-    } else if (is_trailer_magic_set(SLOT_B)) {
+    } else if (is_trailer_magic_set(SLOT_B) && !is_image_ok(SLOT_B)) {
         // test swap of a downloaded update
-        if (is_image_valid(SLOT_B, 1) && !is_update_older()) {
-            retval = start_test_swap();
-        } else {
-            // bad or older update, get rid of it and carry on booting slot A
+        if (!is_image_valid(SLOT_B, 1)) {
             retval = erase_slot(SLOT_B);
+            if (retval == SR_OK) send_rejection(HANDSHAKE_STATUS_REJECTED_INVALID);
+        } else if (is_update_older()) {
+            retval = erase_slot(SLOT_B);
+            if (retval == SR_OK) send_rejection(HANDSHAKE_STATUS_REJECTED_OLDER);
+        } else {
+            retval = start_test_swap();
         }
         if (retval != SR_OK) {
             sr_reset_mcu();
@@ -107,8 +126,6 @@ int main(void) {
                && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {
         // revert
         if (is_image_valid(SLOT_B, 0)) {
-            // need to write copy_done and magic in B trailer to handle power off if tralier A hasn't been fully written yet
-            // If that is the case, it falls back to the revert path above
             retval = erase_trailer(SLOT_B);
             if (retval == SR_OK) retval = set_copy_done(SLOT_B);
             if (retval == SR_OK) retval = set_trailer_magic(SLOT_B);
@@ -116,7 +133,6 @@ int main(void) {
             if (retval != SR_OK) {
                 sr_reset_mcu();
             }
-            confirm_revert = 1;
         } else {
             // Nothing in slot B to revert to + slot A bad, delete everything   
             retval = erase_slot(SLOT_A);
@@ -142,11 +158,7 @@ int main(void) {
 
     // Try to boot into slot A here
     if (boot_allowed && is_image_valid(SLOT_A, 0)) {
-        if (confirm_revert) {
-            retval = set_copy_done(SLOT_A);
-            if (retval != SR_OK) sr_reset_mcu();
-        }
-        // On first boot after a test swap or revert, start the watchdog in case the handshake never finishes
+        // On first boot after a test swap or revert, start the watchdog
         if (is_trailer_magic_set(SLOT_A)
             && (get_swap_info(SLOT_A) == SWAP_TYPE_TEST || get_swap_info(SLOT_A) == SWAP_TYPE_REVERT)
             && is_copy_done(SLOT_A) && !is_image_ok(SLOT_A)) {

@@ -39,6 +39,9 @@ HANDSHAKE_TESTER_ID = 0x1F000FFD
 HANDSHAKE_STATUS_WAITING = 0x00
 HANDSHAKE_STATUS_CONFIRMED = 0x01
 HANDSHAKE_STATUS_FAILED = 0x02
+# sent by the bootloader instead of the app when it throws the update out, mirrors boot_core/Inc/common_config/boot_config.h
+HANDSHAKE_STATUS_REJECTED_INVALID = 0x03
+HANDSHAKE_STATUS_REJECTED_OLDER = 0x04
 # covers a new image that never handshakes: the 20 s IWDG, the revert swap back, then the old app's revert handshake
 HANDSHAKE_WAIT_S = 45.0
 HANDSHAKE_RESULT_WAIT_S = 2.0
@@ -315,7 +318,15 @@ class TestCli:
         data = None
         while time.monotonic() < deadline:
             data = handshake.recv(deadline - time.monotonic())
-            if data is not None and len(data) >= 4 and data[0] == HANDSHAKE_STATUS_WAITING:
+            if data is None or len(data) < 4:
+                data = None
+                continue
+            if data[0] in (HANDSHAKE_STATUS_REJECTED_INVALID, HANDSHAKE_STATUS_REJECTED_OLDER):
+                reason = "failed verification" if data[0] == HANDSHAKE_STATUS_REJECTED_INVALID else "is older than the running image"
+                running = ".".join(str(part) for part in data[1:4])
+                print(f"Update rejected by the bootloader: {new_version} {reason}, ECU is still running version {running}")
+                return
+            if data[0] == HANDSHAKE_STATUS_WAITING:
                 break
             data = None
         if data is None:
