@@ -8,11 +8,10 @@
 // 1. "Page" means the smallest erasable unit of flash on this MCU (some vendors call this a sector).
 
 // 2. config/flash_config.h must supply:
-//  FLASH_WRITE_GRANULARITY_BYTES
+//  FLASH_BEGIN_ADDRESS
 //  FLASH_PAGE_SIZE_BYTES
-//  NUM_FLASH_BANKS,
-//  and the flash slot layout (FW_SLOT_A/B_START_ADDRESS, FW_SLOT_SIZE_BYTES).
-
+//  FLASH_WRITE_GRANULARITY_BYTES
+//  and the flash slot layout in pages (BOOTLOADER_SIZE_PAGES, FW_SLOT_A_SIZE_PAGES, FW_SLOT_B_SIZE_PAGES).
 /**
  * @brief Writes exactly FLASH_WRITE_GRANULARITY_BYTES bytes into flash at address.
  *

@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include "sr_errno.h"
 
-// Must disable IRQs, then jump to Reset Handler for slot 1
+// Disable IRQs while tearing down SysTick/NVIC and setting VTOR + MSP, then re-enable them right before
+// branching to the app's Reset Handler (the app expects to start with interrupts on).
 // app start is the very first byte address of the actual binary payload, after the image header
 __attribute__((noreturn)) void jump_to_app(uint32_t app_start);
 
