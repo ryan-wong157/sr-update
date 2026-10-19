@@ -22,6 +22,7 @@ typedef enum {
     ERR_FDCAN_TX,
     ERR_FDCAN_TIMEOUT,
     ERR_FDCAN_START,
+    ERR_FDCAN_STOP,
 
     // RNG errors
     ERR_RNG_FAIL_START,

@@ -30,6 +30,7 @@ static void err_tx_interrupted_by_rx_callback(void* context, const isotp_spec_fr
 // =================================================================================================
 sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uint32_t rx_len) {
     sr_errno_t retval;
+    sr_fdcan_stop();
 
     retval = sr_fdcan_configure();
     if (retval != SR_OK) {

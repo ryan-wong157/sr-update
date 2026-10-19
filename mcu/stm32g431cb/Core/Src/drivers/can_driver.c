@@ -99,6 +99,13 @@ sr_errno_t sr_fdcan_start() {
     return SR_OK;
 }
 
+sr_errno_t sr_fdcan_stop() {
+    if (HAL_FDCAN_Stop(peripheral_handle) != HAL_OK) {
+        return ERR_FDCAN_STOP;
+    }
+    return SR_OK;
+}
+
 sr_errno_t sr_fdcan_tx(uint32_t can_id, uint8_t* data, uint32_t length) {
     uint32_t dlc = bytes_to_dlc(length);
     if (dlc == UINT32_MAX || (fdcan_data.tx_frame_format == FDCAN_CLASSIC_CAN && dlc > FDCAN_DLC_BYTES_8)) {

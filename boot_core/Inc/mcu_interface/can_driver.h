@@ -22,6 +22,13 @@ sr_errno_t sr_fdcan_configure();
 sr_errno_t sr_fdcan_start();
 
 /**
+ * @brief stop can
+ * 
+ * @return sr_errno_t 
+ */
+sr_errno_t sr_fdcan_stop();
+
+/**
  * @brief
  *
  * @param can_id id of can message
