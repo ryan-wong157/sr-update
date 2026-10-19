@@ -7,6 +7,8 @@
 #include <string.h>
 #include "flash_writer.h"
 #include "mcu_interface/flash_driver.h"
+#include "mcu_interface/sys_misc.h"
+#include "bench.h"
 
 static uint32_t session_active;
 static uint32_t next_write_addr;
@@ -41,7 +43,9 @@ static sr_errno_t erase_up_to(uint32_t address, uint32_t total_len) {
         if (err != SR_OK) {
             return err;
         }
+        uint32_t bench_start = sr_cyccnt();
         err = sr_flash_erase_page(current_bank, current_page, 1);
+        bench_add_erase(bench_start);
         if (err != SR_OK) {
             return err;
         }
@@ -63,7 +67,9 @@ sr_errno_t sr_flash_writer_begin(uint32_t start_address) {
     }
 
     // erase this first starting page
+    uint32_t bench_start = sr_cyccnt();
     err = sr_flash_erase_page(bank, page, 1);
+    bench_add_erase(bench_start);
     if (err != SR_OK) {
         return err;
     }
@@ -104,7 +110,9 @@ sr_errno_t sr_flash_writer_write(const uint8_t* data, uint32_t len) {
             chunk[i] = data[data_index++];
         }
 
+        uint32_t bench_start = sr_cyccnt();
         err = sr_flash_write(next_write_addr, chunk);
+        bench_add_write(bench_start);
         if (err != SR_OK) {
             return err;
         }
@@ -131,7 +139,9 @@ sr_errno_t sr_flash_writer_finish(void) {
         for (uint32_t i = carry_len; i < FLASH_WRITE_GRANULARITY_BYTES; i++) {
             carry[i] = 0xFF;
         }
+        uint32_t bench_start = sr_cyccnt();
         err = sr_flash_write(next_write_addr, carry);
+        bench_add_write(bench_start);
         if (err == SR_OK) {
             next_write_addr += FLASH_WRITE_GRANULARITY_BYTES;
         }

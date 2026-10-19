@@ -370,7 +370,10 @@ class TestCli:
         with self.lock:
             # address is ignored by the server, it always writes to slot B
             location = MemoryLocation(address=0, memorysize=size, address_format=32, memorysize_format=32)
+            # TEMP benchmark: transport time is 0x34 + (first 0x36 .. 0x37), the block size prompt is excluded
+            x34_start = time.perf_counter()
             response = self.client.request_download(location)
+            x34_s = time.perf_counter() - x34_start
         max_length = response.service_data.max_length
         print(f"Download accepted, server max block length = {max_length}")
 
@@ -381,7 +384,7 @@ class TestCli:
             return
 
         num_blocks = (size + block_size - 1) // block_size
-        start = time.monotonic()
+        start = time.perf_counter()
         seq_counter = 1
         for block_num, offset in enumerate(range(0, size, block_size), start=1):
             with self.lock:
@@ -393,7 +396,9 @@ class TestCli:
 
         with self.lock:
             self.client.request_transfer_exit()
-        print(f"Transfer complete, {size} bytes in {time.monotonic() - start:.1f} s")
+        transport_s = x34_s + time.perf_counter() - start
+        print(f"Transfer complete, {size} bytes in {transport_s:.1f} s")
+        print(f"BENCH transport_us={transport_s * 1e6:.0f} bytes={size} block_size={block_size}")
 
     def request_download(self) -> None:
         size = prompt_int("Number of bytes", FLASH_DEFAULT_SIZE_BYTES)

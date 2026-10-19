@@ -4,6 +4,8 @@
 #include "public_keys.h"
 #include "tweetnacl.h"
 #include "mcu_interface/flash_driver.h"
+#include "mcu_interface/sys_misc.h"
+#include "bench.h"
 
 
 static const image_header_t* get_header(slot_type_t slot) {
@@ -317,7 +319,9 @@ uint8_t is_image_valid(slot_type_t slot, uint8_t check_crypto) {
 
         // Verify hash
         uint8_t hash[IMAGE_TLV_SHA512_SIZE];
+        uint32_t bench_start = sr_cyccnt();
         crypto_hash(hash, (const uint8_t*)header, header->ih_hdr_size + header->ih_img_size);
+        bench_boot.hash_cycles = sr_cyccnt() - bench_start;
         if (memcmp(hash, sha512, sizeof(hash))) return 0;
 
         // Verify signature
@@ -327,7 +331,10 @@ uint8_t is_image_valid(slot_type_t slot, uint8_t check_crypto) {
 
         memcpy(signed_msg, signature, IMAGE_TLV_ED25519_SIG_SIZE);
         memcpy(signed_msg + IMAGE_TLV_ED25519_SIG_SIZE, hash, IMAGE_TLV_SHA512_SIZE);
-        if (crypto_sign_open(opened_msg, &opened_len, signed_msg, sizeof(signed_msg), SIGNING_PUBLIC_KEY) != 0) return 0;       
+        bench_start = sr_cyccnt();
+        int sig_result = crypto_sign_open(opened_msg, &opened_len, signed_msg, sizeof(signed_msg), SIGNING_PUBLIC_KEY);
+        bench_boot.sig_cycles = sr_cyccnt() - bench_start;
+        if (sig_result != 0) return 0;       
     }
     return 1;
 }

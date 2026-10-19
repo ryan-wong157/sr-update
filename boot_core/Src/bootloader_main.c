@@ -9,6 +9,7 @@
 #include "uds/uds.h"
 #include "image_handler.h"
 #include "common_config/boot_config.h"
+#include "bench.h"
 
 // Setup slot A trailer, clear slot B trailer, then revert.
 static sr_errno_t start_revert(void) {
@@ -75,6 +76,7 @@ int main(void) {
     }
 
     sr_led_blink();
+    sr_counter_start();
 
     uint8_t boot_allowed = 1;
     sr_errno_t retval;
@@ -117,8 +119,11 @@ int main(void) {
             retval = erase_slot(SLOT_B);
             if (retval == SR_OK) send_rejection(HANDSHAKE_STATUS_REJECTED_OLDER);
         } else {
+            uint32_t bench_start = sr_cyccnt();
             retval = start_test_swap();
+            bench_boot.swap_cycles = sr_cyccnt() - bench_start;
         }
+        bench_send_boot();
         if (retval != SR_OK) {
             sr_reset_mcu();
         }
