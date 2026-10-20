@@ -66,15 +66,19 @@ def bench_ecu_id(ecu_id: int) -> int:
     return 0x1F000FFE | (ecu_id << 12)
 
 
-def print_bench(bench: "HandshakeSocket") -> None:
-    """Prints every benchmark frame the bootloader sent since the socket was opened"""
+def print_bench(bench: "HandshakeSocket") -> dict[str, int]:
+    """Prints every benchmark frame the bootloader sent since the socket was opened, returns {field name: value}"""
     fields = {}
     while (data := bench.recv(0.1)) is not None:
         if len(data) == 8:
             fields[data[0]] = struct.unpack_from("<I", data, 4)[0]
+    named = {}
     for tag, names in (("BENCH_TX", BENCH_TX_FIELDS), ("BENCH_BOOT", BENCH_BOOT_FIELDS)):
-        values = [f"{name}={fields[field_id]}" for field_id, name in names.items() if field_id in fields]
-        print(f"{tag} {' '.join(values)}" if values else f"{tag} not received")
+        values = {name: fields[field_id] for field_id, name in names.items() if field_id in fields}
+        named.update(values)
+        text = " ".join(f"{name}={value}" for name, value in values.items())
+        print(f"{tag} {text}" if values else f"{tag} not received")
+    return named
 
 
 class HandshakeSocket:
@@ -337,8 +341,8 @@ class TestCli:
             handshake.close()
             bench.close()
 
-    def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> None:
-        """Blocks on the test boot (or revert) handshake and reports whether the update stuck"""
+    def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> str:
+        """Blocks on the test boot (or revert) handshake and reports whether the update stuck, returns a short result"""
         deadline = time.monotonic() + HANDSHAKE_WAIT_S
         data = None
         while time.monotonic() < deadline:
@@ -350,13 +354,13 @@ class TestCli:
                 reason = "failed verification" if data[0] == HANDSHAKE_STATUS_REJECTED_INVALID else "is older than the running image"
                 running = ".".join(str(part) for part in data[1:4])
                 print(f"Update rejected by the bootloader: {new_version} {reason}, ECU is still running version {running}")
-                return
+                return "rejected_invalid" if data[0] == HANDSHAKE_STATUS_REJECTED_INVALID else "rejected_older"
             if data[0] == HANDSHAKE_STATUS_WAITING:
                 break
             data = None
         if data is None:
             print(f"No handshake: the update was rejected or failed to boot, ECU should still be on {old_text}")
-            return
+            return "no_handshake"
 
         # a reverted app handshakes too, the only tell is that the version didn't change to the new one
         running = ".".join(str(part) for part in data[1:4])
@@ -376,12 +380,14 @@ class TestCli:
                 continue
             if reverted:
                 print(f"Update failed, ECU is running version {running}")
-            elif data[0] == HANDSHAKE_STATUS_CONFIRMED:
+                return "reverted"
+            if data[0] == HANDSHAKE_STATUS_CONFIRMED:
                 print(f"Handshake successful, ECU confirmed and is now running version {running}")
-            else:
-                print(f"ECU failed to confirm the image, it has rolled back to {old_text}")
-            return
+                return "confirmed"
+            print(f"ECU failed to confirm the image, it has rolled back to {old_text}")
+            return "confirm_failed"
         print(f"ECU never answered the confirm, it rolls back to {old_text} when its watchdog fires")
+        return "no_confirm_answer"
 
     def download(self, image: bytes) -> None:
         """0x34 / 0x36 / 0x37 of image into slot B"""

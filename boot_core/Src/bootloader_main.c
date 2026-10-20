@@ -75,7 +75,6 @@ int main(void) {
         sr_reset_mcu();
     }
 
-    sr_led_blink();
     sr_counter_start();
 
     uint8_t boot_allowed = 1;
@@ -156,7 +155,6 @@ int main(void) {
         boot_allowed = 0;
     } else if (sr_read_boot_magic() == BOOT_HOLD_MAGIC) {
         sr_write_boot_magic(0);
-        sr_led_blink();
         sr_uds_server_start(0);
     }
 
