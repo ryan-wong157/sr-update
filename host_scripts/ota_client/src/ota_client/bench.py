@@ -70,34 +70,43 @@ def enter_bootloader(client: Client, conn: IsoTPSocketConnection, trigger: Hands
     raise TimeoutError(f"bootloader did not answer within {ENTER_BOOTLOADER_WAIT_S:.0f} s")
 
 
-def download(client: Client, image: bytes) -> tuple[float, int]:
+def download(client: Client, image: bytes, status: dict) -> tuple[float, int]:
     """0x34 / 0x36 / 0x37 at the server's max block size, returns (transport time in us, data bytes per block)"""
     location = MemoryLocation(address=0, memorysize=len(image), address_format=32, memorysize_format=32)
     start = time.perf_counter()
+    status["stage"] = "0x34"
     response = client.request_download(location)
     # ISO 14229 counts the SID and sequence counter bytes in the max block length
     block_size = response.service_data.max_length - 2
+    num_blocks = (len(image) + block_size - 1) // block_size
     seq_counter = 1
-    for offset in range(0, len(image), block_size):
+    for block_num, offset in enumerate(range(0, len(image), block_size), start=1):
+        status["stage"] = f"0x36 block {block_num}/{num_blocks}"
         client.transfer_data(seq_counter, image[offset:offset + block_size])
         seq_counter = (seq_counter + 1) & 0xFF
+    status["stage"] = "0x37"
     client.request_transfer_exit()
     return (time.perf_counter() - start) * 1e6, block_size
 
 
-def run_once(tester: TestCli, trigger: HandshakeSocket, image: bytes, ecu_id: int, version: str) -> dict:
+def run_once(tester: TestCli, trigger: HandshakeSocket, image: bytes, ecu_id: int, version: str, status: dict) -> dict:
+    """status["stage"] tracks the step in progress so a failure can say where it happened"""
     client = tester.client
+    status["stage"] = "enter bootloader"
     enter_bootloader(client, tester.conn, trigger)
+    status["stage"] = "0x27 unlock"
     client.unlock_security_access(SECURITY_LEVEL)
 
-    transport_us, block_size = download(client, image)
+    transport_us, block_size = download(client, image, status)
     print(f"BENCH transport_us={transport_us:.0f} bytes={len(image)} block_size={block_size}")
 
     # open before the reset so no frame can be missed
     handshake = HandshakeSocket(tester.interface, handshake_ecu_id(ecu_id))
     bench = HandshakeSocket(tester.interface, bench_ecu_id(ecu_id))
     try:
+        status["stage"] = "0x11 reset"
         client.ecu_reset(0x01)
+        status["stage"] = "handshake"
         result = tester.confirm_update(handshake, ecu_id, version, "the previous image")
         fields = print_bench(bench)
     finally:
@@ -150,12 +159,13 @@ def main():
             while runs == 0 or run <= runs:
                 print(f"\n=== Run {run}{f'/{runs}' if runs else ''}, ECU 0x{ecu_id:03X}, version {version} ===")
                 row = {"timestamp": datetime.now().isoformat(timespec="seconds"), "run": run, "image": image_path.name}
+                status = {"stage": ""}
                 try:
-                    row.update(run_once(tester, trigger, image, ecu_id, version))
+                    row.update(run_once(tester, trigger, image, ecu_id, version, status))
                 except (TimeoutError, TimeoutException, NegativeResponseException,
                         InvalidResponseException, UnexpectedResponseException) as e:
-                    print(f"Run {run} failed: {e}")
-                    row["result"] = f"error: {type(e).__name__}"
+                    print(f"Run {run} failed during {status['stage']}: {e}")
+                    row["result"] = f"error: {type(e).__name__} during {status['stage']}"
                 writer.writerow(row)
                 csv_file.flush()
                 run += 1
