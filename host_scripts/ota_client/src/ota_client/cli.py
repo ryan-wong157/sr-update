@@ -55,11 +55,33 @@ def handshake_ecu_id(ecu_id: int) -> int:
     return 0x1F000FFD | (ecu_id << 12)
 
 
+# TEMP benchmark results from the bootloader, mirrors boot_core/Inc/bench.h
+# one raw frame per field: [field_id, 0, 0, 0, value (u32 LE)]
+BENCH_TX_FIELDS = {0x01: "erase_us", 0x02: "erase_n", 0x03: "erase_avg_ns",
+                   0x04: "write_us", 0x05: "write_n", 0x06: "write_avg_ns"}
+BENCH_BOOT_FIELDS = {0x11: "hash_us", 0x12: "sig_us", 0x13: "swap_us"}
+
+
+def bench_ecu_id(ecu_id: int) -> int:
+    return 0x1F000FFE | (ecu_id << 12)
+
+
+def print_bench(bench: "HandshakeSocket") -> None:
+    """Prints every benchmark frame the bootloader sent since the socket was opened"""
+    fields = {}
+    while (data := bench.recv(0.1)) is not None:
+        if len(data) == 8:
+            fields[data[0]] = struct.unpack_from("<I", data, 4)[0]
+    for tag, names in (("BENCH_TX", BENCH_TX_FIELDS), ("BENCH_BOOT", BENCH_BOOT_FIELDS)):
+        values = [f"{name}={fields[field_id]}" for field_id, name in names.items() if field_id in fields]
+        print(f"{tag} {' '.join(values)}" if values else f"{tag} not received")
+
+
 class HandshakeSocket:
-    """Raw SocketCAN socket that only sees one ECU's handshake frames"""
-    def __init__(self, interface: str, ecu_id: int):
+    """Raw SocketCAN socket that only sees frames with one CAN ID"""
+    def __init__(self, interface: str, can_id: int):
         self.sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
-        can_filter = struct.pack("=II", handshake_ecu_id(ecu_id) | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
+        can_filter = struct.pack("=II", can_id | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
         self.sock.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, can_filter)
         self.sock.bind((interface,))
 
@@ -303,14 +325,17 @@ class TestCli:
         old_text = "no previous image" if old_version == "0.0.0" else f"version {old_version}"
 
         # open before the reset so the first handshake frame can't be missed
-        handshake = HandshakeSocket(self.interface, ecu_id)
+        handshake = HandshakeSocket(self.interface, handshake_ecu_id(ecu_id))
+        bench = HandshakeSocket(self.interface, bench_ecu_id(ecu_id))
         try:
             with self.lock:
                 self.client.ecu_reset(0x01)
             print(f"ECU is resetting to install the update, waiting up to {HANDSHAKE_WAIT_S:.0f} s for the handshake")
             self.confirm_update(handshake, ecu_id, new_version, old_text)
+            print_bench(bench)
         finally:
             handshake.close()
+            bench.close()
 
     def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> None:
         """Blocks on the test boot (or revert) handshake and reports whether the update stuck"""
