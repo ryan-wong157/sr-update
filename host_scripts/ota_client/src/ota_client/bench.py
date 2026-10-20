@@ -35,8 +35,8 @@ from .cli import (
 )
 
 # the test app writes BOOT_HOLD_MAGIC and resets when it sees this frame, so the bootloader stays in its UDS server
-ENTER_BOOTLOADER_ID = 0x1F000001
-ENTER_BOOTLOADER_DATA = bytes([0x01])
+ENTER_BOOTLOADER_ID = 0x1F000FFF
+ENTER_BOOTLOADER_DATA = bytes([0x00, 0x01])
 ENTER_BOOTLOADER_RETRY_S = 0.5
 ENTER_BOOTLOADER_WAIT_S = 30.0
 
