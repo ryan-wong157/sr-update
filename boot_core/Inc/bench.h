@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include "common_config/boot_config.h"
 
-#define CFG_BENCH_TX_ID (0x1F000000u | ((uint32_t)(ECU_ID) << 12) | 0xFFEu)
+#define CFG_BENCH_TX_ID (0x1F000000u | ((uint32_t)(ECU_ID) << 12) | 0xFFCu)
 
 // field ids, mirrored in host_scripts/ota_client/src/ota_client/cli.py
 #define BENCH_ERASE_US      0x01u

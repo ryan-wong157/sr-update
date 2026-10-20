@@ -42,7 +42,7 @@ def configure(auth_key: Ed25519PrivateKey) -> ClientConfig:
     config = default_client_config.copy()
     config["security_algo"] = security_access_algorithm
     config["security_algo_params"] = {"key": auth_key}
-    config["p2_timeout"] = 50 / 1000 # 50 ms
+    config["p2_timeout"] = 150 / 1000 # 150 ms, matches the bootloader's P2
     config["p2_star_timeout"] = 5000 / 1000 # 5000 ms
     config["data_identifiers"] = {
         0xF180: ">BBB", # Bootloader version

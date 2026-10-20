@@ -12,9 +12,9 @@
 
 // Timing params all in ms (star are in 10s of ms)
 #define CFG_S3_SERVER 5000
-#define CFG_DEFAULT_P2_SERVER_MAX 50
+#define CFG_DEFAULT_P2_SERVER_MAX 150
 #define CFG_DEFAULT_P2STAR_SERVER_MAX (5000 / 10)
-#define CFG_PROG_P2_SERVER_MAX 50
+#define CFG_PROG_P2_SERVER_MAX 150
 #define CFG_PROG_P2STAR_SERVER_MAX (20000 / 10)
 
 #define CFG_MAX_x27_ATTEMPTS 3

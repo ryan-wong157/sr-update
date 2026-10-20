@@ -3,7 +3,6 @@ import argparse
 import csv
 import logging
 import time
-import isotp
 from datetime import datetime
 from pathlib import Path
 from udsoncan import MemoryLocation
@@ -16,7 +15,7 @@ from udsoncan.exceptions import (
     UnexpectedResponseException,
 )
 
-from .main import RXID, TXID, configure, get_auth_key
+from .main import configure, get_auth_key
 from .cli import (
     BENCH_BOOT_FIELDS,
     BENCH_TX_FIELDS,
@@ -29,6 +28,7 @@ from .cli import (
     TestCli,
     bench_ecu_id,
     handshake_ecu_id,
+    make_connection,
     print_bench,
     prompt,
     prompt_int,
@@ -142,7 +142,7 @@ def main():
     csv_path = Path(prompt("CSV output", "bench_results.csv"))
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
 
-    conn = IsoTPSocketConnection(args.interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID))
+    conn = make_connection(args.interface)
     config = configure(auth_key)
     # udsoncan caps every request at 5 s total by default, which cuts P2* short
     config["request_timeout"] = None
