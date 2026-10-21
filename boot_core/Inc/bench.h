@@ -17,9 +17,11 @@
 #define BENCH_WRITE_US      0x04u
 #define BENCH_WRITE_N       0x05u
 #define BENCH_WRITE_AVG_NS  0x06u
+#define BENCH_STACK_TX_BYTES 0x07u
 #define BENCH_HASH_US       0x11u
 #define BENCH_SIG_US        0x12u
 #define BENCH_SWAP_US       0x13u
+#define BENCH_STACK_BOOT_BYTES 0x14u
 
 // payload flash ops only (flash_writer.c), sent before the 0x11 reset
 typedef struct {
@@ -43,6 +45,9 @@ void bench_transport_reset(void);
 // start_cyccnt is the sr_cyccnt() value taken just before the erase/write
 void bench_add_erase(uint32_t start_cyccnt);
 void bench_add_write(uint32_t start_cyccnt);
+
+// peak stack use in bytes since reset, RAM is painted 0xAA by __wrap_SystemInit
+uint32_t bench_stack_used(void);
 
 // CAN must already be running (called from the UDS server)
 void bench_send_transport(void);

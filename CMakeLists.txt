@@ -59,5 +59,10 @@ file(GLOB_RECURSE BOOT_CORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DI
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${BOOT_CORE_SOURCES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/boot_core/Inc")
 
+# TEMP thesis benchmark: Reset_Handler's SystemInit goes to __wrap_SystemInit (bench.c) to paint RAM
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-Wl,--wrap=SystemInit")
+# LTO can't see the __real_SystemInit inside the wrapper's asm and throws the real SystemInit away
+set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/boot_core/Src/bench.c" PROPERTIES COMPILE_OPTIONS "-fno-lto")
+
 # Include the target MCU deps
 add_subdirectory("${ECU_MCU_DIR}")

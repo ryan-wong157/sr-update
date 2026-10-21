@@ -8,7 +8,8 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-COLUMNS = ["transport_us", "erase_us", "erase_avg_ns", "write_us", "write_avg_ns", "hash_us", "sig_us", "swap_us"]
+COLUMNS = ["transport_us", "erase_us", "erase_avg_ns", "write_us", "write_avg_ns", "hash_us", "sig_us", "swap_us",
+           "stack_tx_bytes", "stack_boot_bytes"]
 
 
 def summarise(image: str, rows: list[dict]) -> None:
@@ -24,14 +25,14 @@ def summarise(image: str, rows: list[dict]) -> None:
 
     if not confirmed:
         return
-    print(f"  {'column':<14}{'mean':>12}{'stdev':>12}{'min':>12}{'max':>12}{'n':>6}")
+    print(f"  {'column':<18}{'mean':>12}{'stdev':>12}{'min':>12}{'max':>12}{'n':>6}")
     for column in COLUMNS:
         values = [float(row[column]) for row in confirmed if row.get(column)]
         if not values:
-            print(f"  {column:<14}{'-':>12}")
+            print(f"  {column:<18}{'-':>12}")
             continue
         stdev = statistics.stdev(values) if len(values) > 1 else 0.0
-        print(f"  {column:<14}{statistics.mean(values):>12.1f}{stdev:>12.1f}{min(values):>12.0f}{max(values):>12.0f}{len(values):>6}")
+        print(f"  {column:<18}{statistics.mean(values):>12.1f}{stdev:>12.1f}{min(values):>12.0f}{max(values):>12.0f}{len(values):>6}")
 
 
 def main():

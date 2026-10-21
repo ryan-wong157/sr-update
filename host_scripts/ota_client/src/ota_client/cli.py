@@ -58,8 +58,8 @@ def handshake_ecu_id(ecu_id: int) -> int:
 # TEMP benchmark results from the bootloader, mirrors boot_core/Inc/bench.h
 # one raw frame per field: [field_id, 0, 0, 0, value (u32 LE)]
 BENCH_TX_FIELDS = {0x01: "erase_us", 0x02: "erase_n", 0x03: "erase_avg_ns",
-                   0x04: "write_us", 0x05: "write_n", 0x06: "write_avg_ns"}
-BENCH_BOOT_FIELDS = {0x11: "hash_us", 0x12: "sig_us", 0x13: "swap_us"}
+                   0x04: "write_us", 0x05: "write_n", 0x06: "write_avg_ns", 0x07: "stack_tx_bytes"}
+BENCH_BOOT_FIELDS = {0x11: "hash_us", 0x12: "sig_us", 0x13: "swap_us", 0x14: "stack_boot_bytes"}
 
 
 def bench_ecu_id(ecu_id: int) -> int:

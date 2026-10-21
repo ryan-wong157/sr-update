@@ -42,7 +42,10 @@ def configure(auth_key: Ed25519PrivateKey) -> ClientConfig:
     config = default_client_config.copy()
     config["security_algo"] = security_access_algorithm
     config["security_algo_params"] = {"key": auth_key}
-    config["p2_timeout"] = 150 / 1000 # 150 ms, matches the bootloader's P2
+    # ignore the P2/P2* the bootloader advertises in 0x10 and use these generous ones instead,
+    # so bus/host latency can never fail a request the bootloader answered in time
+    config["use_server_timing"] = False
+    config["p2_timeout"] = 1.0 # 1 s
     config["p2_star_timeout"] = 5000 / 1000 # 5000 ms
     config["data_identifiers"] = {
         0xF180: ">BBB", # Bootloader version
