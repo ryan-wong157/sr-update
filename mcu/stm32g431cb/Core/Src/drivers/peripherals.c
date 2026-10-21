@@ -7,7 +7,6 @@
 #include "fdcan.h"
 #include "rng.h"
 #include "rtc.h"
-#include "usart.h"
 #include "mcu_interface/peripherals.h"
 
 // Defined in the CubeMX-generated Core/Src/main.c but not declared in main.h
@@ -20,7 +19,6 @@ sr_errno_t sr_peripherals_init(void) {
     MX_FDCAN1_Init();
     MX_RNG_Init();
     MX_RTC_Init();
-    MX_USART2_UART_Init();
     return SR_OK;
 }
 
@@ -29,7 +27,6 @@ sr_errno_t sr_peripherals_deinit(void) {
     HAL_FDCAN_DeInit(&hfdcan1);
     HAL_RNG_DeInit(&hrng);
     HAL_RTC_DeInit(&hrtc);
-    HAL_UART_DeInit(&huart2);
     HAL_DeInit();
     return SR_OK;
 }
