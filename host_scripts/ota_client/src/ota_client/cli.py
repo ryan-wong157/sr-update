@@ -55,6 +55,15 @@ def handshake_ecu_id(ecu_id: int) -> int:
     return 0x1F000FFD | (ecu_id << 12)
 
 
+def make_connection(interface: str) -> IsoTPSocketConnection:
+    """UDS connection where send() only returns once every CAN frame of the request is queued. Without
+    WAIT_TX_DONE it returns straight away, so udsoncan's P2 timer also has to cover sending a whole
+    multi-frame 0x36 and times out at random"""
+    tpsock = isotp.socket(timeout=0.1)
+    tpsock.set_opts(optflag=isotp.socket.flags.WAIT_TX_DONE)
+    return IsoTPSocketConnection(interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID), tpsock=tpsock)
+
+
 class HandshakeSocket:
     """Raw SocketCAN socket that only sees one ECU's handshake frames"""
     def __init__(self, interface: str, ecu_id: int):
@@ -508,7 +517,7 @@ def main():
         logging.getLogger("UdsClient").setLevel(logging.WARNING)
         logging.getLogger("Connection").setLevel(logging.WARNING)
 
-    conn = IsoTPSocketConnection(args.interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID))
+    conn = make_connection(args.interface)
     config = configure(auth_key)
     # udsoncan caps every request at 5 s total by default, which cuts P2* short
     config["request_timeout"] = None
