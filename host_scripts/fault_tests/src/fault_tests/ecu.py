@@ -23,6 +23,8 @@ ENTER_BOOTLOADER_ID = 0x1F000FFF
 ENTER_BOOTLOADER_DATA = bytes([0x00, 0x01])
 ENTER_BOOTLOADER_RETRY_S = 0.5
 ENTER_BOOTLOADER_WAIT_S = 30.0
+# ota_client's 45 s is too short once the fault pauses (1.8 s each) are in the swap
+HANDSHAKE_WAIT_S = 180.0
 
 UDS_ERRORS = (NegativeResponseException, TimeoutException, InvalidResponseException, UnexpectedResponseException)
 
@@ -142,7 +144,7 @@ def wait_result(handshake: ota.HandshakeSocket, ecu_id: int, new_version: str | 
     The old app's revert handshake looks the same as the new app's, the only tell is the version, so
     the new image needs a different version from the one installed for a revert to show up.
     """
-    deadline = time.monotonic() + ota.HANDSHAKE_WAIT_S
+    deadline = time.monotonic() + HANDSHAKE_WAIT_S
     data = None
     while time.monotonic() < deadline:
         data = handshake.recv(deadline - time.monotonic())
