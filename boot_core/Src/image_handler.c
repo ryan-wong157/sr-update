@@ -4,6 +4,7 @@
 #include "public_keys.h"
 #include "tweetnacl.h"
 #include "mcu_interface/flash_driver.h"
+#include "fault_pause.h"
 
 
 static const image_header_t* get_header(slot_type_t slot) {
@@ -228,15 +229,23 @@ sr_errno_t swap_forward(uint32_t index, uint32_t total_pages, uint8_t is_halfway
         if (!is_halfway_done) {
             retval = copy_page(secondary, primary);
             if (retval != SR_OK) return retval;
+            if (idx == 0 || idx == 2 || idx == 3) {
+                fault_pause();
+            }
             retval = set_swap_status(2 * idx);
             if (retval != SR_OK) return retval;
+            if (idx == 0 || idx == 2 || idx == 3) {
+                fault_pause();
+            }
         }
         is_halfway_done = 0;
 
         retval = copy_page(primary, secondary + FLASH_PAGE_SIZE_BYTES);
         if (retval != SR_OK) return retval;
+        fault_pause();
         retval = set_swap_status(2 * idx + 1);
         if (retval != SR_OK) return retval;
+        fault_pause();
     }
 
     // erase slot 2 final page to prevent leftover header being present in page 1 for 1 page swaps
@@ -256,15 +265,23 @@ sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_
         if (!is_halfway_done) {
             retval = copy_page(secondary + FLASH_PAGE_SIZE_BYTES, primary);
             if (retval != SR_OK) return retval;
+            if (idx == 0 || idx == 2 || idx == 3) {
+                fault_pause();
+            }
             retval = set_swap_status(2 * idx);
             if (retval != SR_OK) return retval;
+            if (idx == 0 || idx == 2 || idx == 3) {
+                fault_pause();
+            }
         }
         is_halfway_done = 0;
 
         retval = copy_page(primary, secondary);
         if (retval != SR_OK) return retval;
+        fault_pause();
         retval = set_swap_status(2 * idx + 1);
         if (retval != SR_OK) return retval;
+        fault_pause();
     }
     return SR_OK;
 }

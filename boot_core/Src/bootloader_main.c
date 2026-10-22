@@ -9,14 +9,20 @@
 #include "uds/uds.h"
 #include "image_handler.h"
 #include "common_config/boot_config.h"
+#include "fault_pause.h"
 
 // Setup slot A trailer, clear slot B trailer, then revert.
 static sr_errno_t start_revert(void) {
     sr_errno_t retval = erase_trailer(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = set_swap_info(SLOT_A, SWAP_TYPE_REVERT);
+    fault_pause();
     if (retval == SR_OK) retval = set_swap_size_pages(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = set_trailer_magic(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = erase_trailer(SLOT_B);
+    fault_pause();
     if (retval != SR_OK) return retval;
 
     uint32_t swap_size = get_swap_size_pages(SLOT_A);
@@ -28,10 +34,15 @@ static sr_errno_t start_revert(void) {
 // Setup slot A trailer, clear slot B trailer, then test swap.
 static sr_errno_t start_test_swap(void) {
     sr_errno_t retval = erase_trailer(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = set_swap_info(SLOT_A, SWAP_TYPE_TEST);
+    fault_pause();
     if (retval == SR_OK) retval = set_swap_size_pages(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = set_trailer_magic(SLOT_A);
+    fault_pause();
     if (retval == SR_OK) retval = erase_trailer(SLOT_B);
+    fault_pause();
     if (retval != SR_OK) return retval;
 
     retval = swap_forward(0, get_swap_size_pages(SLOT_A), 0);
@@ -127,8 +138,11 @@ int main(void) {
         // revert
         if (is_image_valid(SLOT_B, 0)) {
             retval = erase_trailer(SLOT_B);
+            fault_pause();
             if (retval == SR_OK) retval = set_copy_done(SLOT_B);
+            fault_pause();
             if (retval == SR_OK) retval = set_trailer_magic(SLOT_B);
+            fault_pause();
             if (retval == SR_OK) retval = start_revert();
             if (retval != SR_OK) {
                 sr_reset_mcu();
