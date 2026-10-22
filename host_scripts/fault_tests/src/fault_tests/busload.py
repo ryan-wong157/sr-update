@@ -3,7 +3,7 @@
 Every frame gets a random ID that is never one of the OTA IDs. With --priority high the IDs are
 all numerically lower than the bootloader's, so they win arbitration against it.
 
-  fault-busload --load 50     about 50 % of a 1 Mbit/s bus
+  fault-busload --load 50     about 50 % of a 500 kbit/s bus
   fault-busload --load 100    as fast as the interface will take frames
 """
 import argparse
@@ -37,7 +37,7 @@ def main():
     parser = argparse.ArgumentParser(description="Load the CAN bus with random frames")
     parser.add_argument("--interface", default="can0", help="SocketCAN interface (default: can0)")
     parser.add_argument("--load", type=float, default=50.0, help="Target bus load in %% (default: 50, 100 = flat out)")
-    parser.add_argument("--bitrate", type=int, default=1_000_000, help="Bus bitrate in bit/s, used to turn --load into a frame rate (default: 1000000)")
+    parser.add_argument("--bitrate", type=int, default=500_000, help="Bus bitrate in bit/s, used to turn --load into a frame rate (default: 500000)")
     parser.add_argument("--priority", choices=["high", "low"], default="high", help="IDs below (high) or above (low) the OTA IDs (default: high)")
     parser.add_argument("--duration", type=float, default=0, help="Seconds to run, 0 = until Ctrl-C")
     args = parser.parse_args()
