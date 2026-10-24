@@ -71,7 +71,7 @@ def main():
         stage["name"] = "handshake"
         outcome, running = ecu.wait_result(handshake, ecu_id, new_version, confirm=not args.no_confirm)
         print(f"Outcome: {outcome}" + (f", ECU running {running}" if running else ""))
-    except (*UDS_ERRORS, TimeoutError) as e:
+    except (*UDS_ERRORS, TimeoutError, OSError) as e:
         print(f"Outcome: failed during {stage['name']}: {e}")
     finally:
         handshake.close()

@@ -10,8 +10,8 @@ static void wait_ms(uint32_t ms) {
 }
 
 void fault_pause(void) {
-    sr_led_set(1);
-    wait_ms(CFG_FAULT_PAUSE_ON_MS);
-    sr_led_set(0);
-    wait_ms(CFG_FAULT_PAUSE_OFF_MS);
+    // sr_led_set(1);
+    // wait_ms(CFG_FAULT_PAUSE_ON_MS);
+    // sr_led_set(0);
+    // wait_ms(CFG_FAULT_PAUSE_OFF_MS);
 }

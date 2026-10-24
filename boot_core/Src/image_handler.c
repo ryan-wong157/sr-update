@@ -282,10 +282,14 @@ sr_errno_t swap_revert(uint32_t index, uint32_t total_pages, uint8_t is_halfway_
 
         retval = copy_page(primary, secondary);
         if (retval != SR_OK) return retval;
-        fault_pause();
+        if (idx == 0 || idx == 2 || idx == 3) {
+            fault_pause();
+        }
         retval = set_swap_status(2 * idx + 1);
         if (retval != SR_OK) return retval;
-        fault_pause();
+        if (idx == 0 || idx == 2 || idx == 3) {
+            fault_pause();
+        }
     }
     return SR_OK;
 }
