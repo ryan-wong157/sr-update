@@ -8,7 +8,7 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-COLUMNS = ["transport_us", "erase_us", "erase_avg_ns", "write_us", "write_avg_ns", "hash_us", "sig_us", "swap_us",
+COLUMNS = ["total_us", "transport_us", "erase_us", "erase_avg_ns", "write_us", "write_avg_ns", "hash_us", "sig_us", "swap_us",
            "stack_tx_bytes", "stack_boot_bytes"]
 
 

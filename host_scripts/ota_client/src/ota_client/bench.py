@@ -41,7 +41,7 @@ ENTER_BOOTLOADER_RETRY_S = 0.5
 ENTER_BOOTLOADER_WAIT_S = 30.0
 
 CSV_FIELDS = [
-    "timestamp", "run", "image", "bytes", "block_size", "transport_us",
+    "timestamp", "run", "image", "bytes", "block_size", "transport_us", "total_us",
     *BENCH_TX_FIELDS.values(), *BENCH_BOOT_FIELDS.values(), "result",
 ]
 
@@ -54,17 +54,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def enter_bootloader(client: Client, conn: IsoTPSocketConnection, trigger: HandshakeSocket) -> None:
-    """Kicks the app into the bootloader and waits until the bootloader's UDS server takes the programming session"""
+def enter_bootloader(client: Client, conn: IsoTPSocketConnection, trigger: HandshakeSocket) -> float:
+    """Kicks the app into the bootloader and waits until the bootloader's UDS server takes the programming session,
+    returns the perf_counter() from just before the 0x10 request that succeeded"""
     deadline = time.monotonic() + ENTER_BOOTLOADER_WAIT_S
     while time.monotonic() < deadline:
         # harmless if the bootloader is already up, its CAN filter drops this ID
         trigger.send(ENTER_BOOTLOADER_ID, ENTER_BOOTLOADER_DATA)
         time.sleep(ENTER_BOOTLOADER_RETRY_S)
         conn.empty_rxqueue()
+        start = time.perf_counter()
         try:
             client.change_session(SESSION_PROGRAMMING)
-            return
+            return start
         except (TimeoutException, NegativeResponseException, InvalidResponseException, UnexpectedResponseException):
             continue
     raise TimeoutError(f"bootloader did not answer within {ENTER_BOOTLOADER_WAIT_S:.0f} s")
@@ -93,7 +95,8 @@ def run_once(tester: TestCli, trigger: HandshakeSocket, image: bytes, ecu_id: in
     """status["stage"] tracks the step in progress so a failure can say where it happened"""
     client = tester.client
     status["stage"] = "enter bootloader"
-    enter_bootloader(client, tester.conn, trigger)
+    # total time runs from the 0x10 that got answered to the ECU's answer to the handshake confirm
+    session_start = enter_bootloader(client, tester.conn, trigger)
     status["stage"] = "0x27 unlock"
     client.unlock_security_access(SECURITY_LEVEL)
 
@@ -108,12 +111,15 @@ def run_once(tester: TestCli, trigger: HandshakeSocket, image: bytes, ecu_id: in
         client.ecu_reset(0x01)
         status["stage"] = "handshake"
         result = tester.confirm_update(handshake, ecu_id, version, "the previous image")
+        total_us = (time.perf_counter() - session_start) * 1e6
+        print(f"BENCH total_us={total_us:.0f}")
         fields = print_bench(bench)
     finally:
         handshake.close()
         bench.close()
 
-    return {"bytes": len(image), "block_size": block_size, "transport_us": round(transport_us), **fields, "result": result}
+    return {"bytes": len(image), "block_size": block_size, "transport_us": round(transport_us),
+            "total_us": round(total_us), **fields, "result": result}
 
 
 def main():
@@ -141,6 +147,11 @@ def main():
     runs = prompt_int("Number of runs (0 = until Ctrl-C)", 10)
     csv_path = Path(prompt("CSV output", "bench_results.csv"))
     write_header = not csv_path.exists() or csv_path.stat().st_size == 0
+    if not write_header:
+        with csv_path.open(newline="") as f:
+            if next(csv.reader(f), []) != CSV_FIELDS:
+                print(f"{csv_path.resolve()} has different columns (older bench version?), pick a new CSV")
+                return
 
     conn = make_connection(args.interface)
     config = configure(auth_key)
