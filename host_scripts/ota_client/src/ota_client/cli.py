@@ -49,6 +49,9 @@ HANDSHAKE_RESULT_WAIT_S = 2.0
 CAN_EFF_FLAG = 0x80000000
 CAN_EFF_MASK = 0x1FFFFFFF
 CAN_FRAME_FMT = "=IB3x8s"
+CANFD_FRAME_FMT = "=IBBBB64s" # can_id, len, flags, res0, res1, data
+CANFD_BRS = 0x01
+CAN_RAW_FD_FRAMES = 5 # from linux/can/raw.h, not every Python build exposes socket.CAN_RAW_FD_FRAMES
 
 
 def handshake_ecu_id(ecu_id: int) -> int:
@@ -87,13 +90,18 @@ def make_connection(interface: str) -> IsoTPSocketConnection:
     multi-frame 0x36 and times out at random"""
     tpsock = isotp.socket(timeout=0.1)
     tpsock.set_opts(optflag=isotp.socket.flags.WAIT_TX_DONE)
+    # CAN FD with bit rate switch, 64 byte frames to match CFG_ISOTP_CAN_DL in the bootloader
+    tpsock.set_ll_opts(mtu=isotp.socket.LinkLayerProtocol.CAN_FD, tx_dl=64, tx_flags=CANFD_BRS)
     return IsoTPSocketConnection(interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID), tpsock=tpsock)
 
 
 class HandshakeSocket:
-    """Raw SocketCAN socket that only sees frames with one CAN ID"""
+    """Raw SocketCAN socket that only sees frames with one CAN ID. Sends CAN FD frames with bit rate switch,
+    receives both FD and classic"""
     def __init__(self, interface: str, can_id: int):
         self.sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
+        # without this the kernel silently drops every FD frame on this socket
+        self.sock.setsockopt(socket.SOL_CAN_RAW, CAN_RAW_FD_FRAMES, 1)
         can_filter = struct.pack("=II", can_id | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
         self.sock.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, can_filter)
         self.sock.bind((interface,))
@@ -102,17 +110,22 @@ class HandshakeSocket:
         self.sock.close()
 
     def send(self, can_id: int, data: bytes) -> None:
-        self.sock.send(struct.pack(CAN_FRAME_FMT, can_id | CAN_EFF_FLAG, len(data), data.ljust(8, b"\x00")))
+        # data must be a valid FD length, everything sent here is <= 8 bytes
+        self.sock.send(struct.pack(CANFD_FRAME_FMT, can_id | CAN_EFF_FLAG, len(data), CANFD_BRS, 0, 0, data.ljust(64, b"\x00")))
 
     def recv(self, timeout: float) -> bytes | None:
         """Data of the next handshake frame from the ECU, None on timeout"""
         self.sock.settimeout(max(timeout, 0))
         try:
-            raw = self.sock.recv(struct.calcsize(CAN_FRAME_FMT))
+            raw = self.sock.recv(struct.calcsize(CANFD_FRAME_FMT))
         except (TimeoutError, BlockingIOError):
             return None
-        _, dlc, data = struct.unpack(CAN_FRAME_FMT, raw)
-        return data[:dlc]
+        # classic frames still arrive as the 16 byte struct can_frame
+        if len(raw) == struct.calcsize(CANFD_FRAME_FMT):
+            _, length, _, _, _, data = struct.unpack(CANFD_FRAME_FMT, raw)
+        else:
+            _, length, data = struct.unpack(CAN_FRAME_FMT, raw)
+        return data[:length]
 
 
 FLASH_FILL_BYTE = 0xAA

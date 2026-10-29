@@ -43,6 +43,7 @@ sr_errno_t sr_isotp_start(uint8_t* tx_buf, uint32_t tx_len, uint8_t* rx_buf, uin
     }
 
     isotp_session_init(&isotp_session, ISOTP_FORMAT, tx_buf, tx_len, rx_buf, rx_len);
+    isotp_session.protocol_config.fd_header_force = true;
     sr_counter_start();
 
     isotp_session.callback_transmission_rx = rx_done_callback;
@@ -90,8 +91,7 @@ sr_errno_t sr_isotp_tx(const uint8_t* tx_data, size_t length) {
             return ERR_ISOTP_TIMEOUT;
         }
         if (sr_micros_since(last_send_cyc) >= req_separation_us) {
-            // TEMP: 8 BYTES MAX FOR NOW (change to 64 later for fd can)
-            uint8_t send_buf[8];
+            uint8_t send_buf[CFG_ISOTP_CAN_DL];
             size_t single_len = isotp_session_can_tx(&isotp_session, send_buf, sizeof(send_buf), &req_separation_us);
             if (single_len > 0) {
                 sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, send_buf, single_len);
@@ -121,7 +121,6 @@ sr_errno_t sr_isotp_rx(uint8_t* out_buf, uint32_t out_len, uint32_t* recv_length
             sr_errno_t retval = last_err;
             last_err = SR_OK;
             if (retval == ERR_ISOTP_TRANSMISSION_TOO_LARGE) {
-                // TEMP: 8 BYTES MAX FOR NOW
                 uint8_t fc_overflow[8] = {0x32, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
                 sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, fc_overflow, sizeof(fc_overflow));
             }
@@ -137,8 +136,7 @@ sr_errno_t sr_isotp_rx(uint8_t* out_buf, uint32_t out_len, uint32_t* recv_length
             return ERR_ISOTP_TIMEOUT;
         }
         // respond with any FC frames if there's any
-        // TEMP: 8 BYTES MAX FOR NOW
-        uint8_t frame[8];
+        uint8_t frame[CFG_ISOTP_CAN_DL];
         size_t n = isotp_session_can_tx(&isotp_session, frame, sizeof(frame), NULL);
         if (n > 0 && last_err == SR_OK && !rx_done_flag) {
             sr_errno_t retval = sr_fdcan_tx_blocking(CFG_ISOTP_TX_ID, frame, n);
@@ -231,7 +229,6 @@ static uint8_t frame_is_malformed(const uint8_t* data, size_t length) {
     }
     switch ((data[ISOTP_SPEC_FRAME_TYPE_IDX] & ISOTP_SPEC_FRAME_TYPE_MASK) >> ISOTP_SPEC_FRAME_TYPE_SHIFT) {
         case ISOTP_SPEC_FRAME_FIRST: {
-            // TEMP: 8 BYTES MAX FOR NOW
             // a first frame fills the CAN frame and announces more than a single frame can carry
             if (length < 8) {
                 return 1;

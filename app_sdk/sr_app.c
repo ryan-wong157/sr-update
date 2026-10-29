@@ -38,9 +38,9 @@ static void send_handshake(FDCAN_HandleTypeDef* hfdcan, uint16_t ecu_id, uint8_t
         .TxFrameType = FDCAN_DATA_FRAME,
         .DataLength = FDCAN_DLC_BYTES_4,
         .ErrorStateIndicator = FDCAN_ESI_ACTIVE,
-        .BitRateSwitch = FDCAN_BRS_OFF,
-        .FDFormat = FDCAN_CLASSIC_CAN,
-        // .FDFormat = FDCAN_FD_CAN,
+        // same frame type the app configured the peripheral for (FrameFormat in fdcan.c)
+        .BitRateSwitch = hfdcan->Init.FrameFormat == FDCAN_FRAME_FD_BRS ? FDCAN_BRS_ON : FDCAN_BRS_OFF,
+        .FDFormat = hfdcan->Init.FrameFormat == FDCAN_FRAME_CLASSIC ? FDCAN_CLASSIC_CAN : FDCAN_FD_CAN,
         .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
         .MessageMarker = 0
     };

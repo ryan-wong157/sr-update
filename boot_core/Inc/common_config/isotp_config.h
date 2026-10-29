@@ -5,7 +5,8 @@
 #include "isotp/isotplib/isotplib.h"
 
 #define CFG_ISOTP_TIMEOUT_MS 1000
-static const isotp_format_t ISOTP_FORMAT = ISOTP_FORMAT_NORMAL;
+static const isotp_format_t ISOTP_FORMAT = ISOTP_FORMAT_FD;
+#define CFG_ISOTP_CAN_DL 64
 
 // ECU_ID is the "ECU Hardware ID" (pedalbox, drive UEN etc), defined per-ECU via cmake.
 // 12 bits!!!! (4 MSB should be 0)

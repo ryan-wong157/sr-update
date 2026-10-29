@@ -83,6 +83,17 @@ sr_errno_t sr_fdcan_configure() {
         return ERR_FDCAN_CFG_FIFO_OVERWRITE;
     }
 
+    // Need this for fast data rate CAN
+    retval = HAL_FDCAN_ConfigTxDelayCompensation(peripheral_handle,
+        peripheral_handle->Init.DataPrescaler * peripheral_handle->Init.DataTimeSeg1, 0);
+    if (retval != HAL_OK) {
+        return ERR_FDCAN_CFG_TDC;
+    }
+    retval = HAL_FDCAN_EnableTxDelayCompensation(peripheral_handle);
+    if (retval != HAL_OK) {
+        return ERR_FDCAN_CFG_TDC;
+    }
+
     // Activate FIFO0 interrupt on new msg
     retval = HAL_FDCAN_ActivateNotification(peripheral_handle, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
     if (retval != HAL_OK) {
