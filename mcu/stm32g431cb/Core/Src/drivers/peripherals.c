@@ -27,6 +27,7 @@ sr_errno_t sr_peripherals_deinit(void) {
     HAL_FDCAN_DeInit(&hfdcan1);
     HAL_RNG_DeInit(&hrng);
     HAL_RTC_DeInit(&hrtc);
+    HAL_RCC_DeInit();
     HAL_DeInit();
     return SR_OK;
 }
