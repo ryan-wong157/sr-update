@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // How many bytes should 0x36 transfer data send (including 2 non-data bytes)
-#define CFG_UDS_x36_MAX_BLOCK_LEN 258
+#define CFG_UDS_x36_MAX_BLOCK_LEN 4095
 
 // Buffer sizes
 #define CFG_UDS_TX_BUF_SIZE 256
