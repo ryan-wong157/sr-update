@@ -38,9 +38,13 @@ static void send_handshake(FDCAN_HandleTypeDef* hfdcan, uint16_t ecu_id, uint8_t
         .TxFrameType = FDCAN_DATA_FRAME,
         .DataLength = FDCAN_DLC_BYTES_4,
         .ErrorStateIndicator = FDCAN_ESI_ACTIVE,
+#if SR_APP_CAN_FD
+        .BitRateSwitch = FDCAN_BRS_ON,
+        .FDFormat = FDCAN_FD_CAN,
+#else
         .BitRateSwitch = FDCAN_BRS_OFF,
         .FDFormat = FDCAN_CLASSIC_CAN,
-        // .FDFormat = FDCAN_FD_CAN,
+#endif
         .TxEventFifoControl = FDCAN_NO_TX_EVENTS,
         .MessageMarker = 0
     };

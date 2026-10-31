@@ -1,6 +1,7 @@
 // FD-CAN driver functions
 // Written by Ryan Wong
 
+#include <string.h>
 #include "main.h"
 #include "fdcan.h"
 #include "can_helper.h"
@@ -110,6 +111,15 @@ sr_errno_t sr_fdcan_tx(uint32_t can_id, uint8_t* data, uint32_t length) {
     uint32_t dlc = bytes_to_dlc(length);
     if (dlc == UINT32_MAX || (fdcan_data.tx_frame_format == FDCAN_CLASSIC_CAN && dlc > FDCAN_DLC_BYTES_8)) {
         return ERR_FDCAN_TX_MSG_TOO_BIG;
+    }
+
+    // pad to next biggest fd-accepted interval
+    uint8_t padded[64];
+    uint32_t dlc_length = dlc_to_bytes(dlc);
+    if (dlc_length != length) {
+        memcpy(padded, data, length);
+        memset(padded + length, CFG_FDCAN_PAD_BYTE, dlc_length - length);
+        data = padded;
     }
 
     FDCAN_TxHeaderTypeDef header = {
