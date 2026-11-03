@@ -157,6 +157,9 @@ def main():
     config = configure(auth_key)
     # udsoncan caps every request at 5 s total by default, which cuts P2* short
     config["request_timeout"] = None
+    # match the bootloader's programming session P2* (CFG_PROG_P2STAR_SERVER_MAX), the 0x27 ed25519 verify
+    # goes past 5 s at low clock speeds and can only send one 0x78 while it blocks
+    config["p2_star_timeout"] = 20.0
 
     trigger = HandshakeSocket(args.interface, ENTER_BOOTLOADER_ID)
     try:
