@@ -21,14 +21,14 @@ from udsoncan.exceptions import (
 # NOTE: importing main also runs its udsoncan.setup_logging() call
 from .main import RXID, TXID, configure, get_auth_key
 
-# Mirrors mcu/stm32g431cb/Core/Inc/config/flash_config.h and boot_core/Inc/image_format.h
-FLASH_PAGE_SIZE_BYTES = 2048
-FW_SLOT_A_SIZE_PAGES = 26
-FW_SLOT_B_SIZE_PAGES = 27
-FW_SLOT_SIZE_BYTES = FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES # slot B, where downloads go: 54 KB
+# Mirrors mcu/stm32h753zit/Core/Inc/config/flash_config.h and boot_core/Inc/image_format.h
+FLASH_PAGE_SIZE_BYTES = 0x20000 # 128 KB sector
+FW_SLOT_A_SIZE_PAGES = 7
+FW_SLOT_B_SIZE_PAGES = 8
+FW_SLOT_SIZE_BYTES = FW_SLOT_B_SIZE_PAGES * FLASH_PAGE_SIZE_BYTES # slot B, where downloads go: 1 MB
 # FW_ACTUAL_SIZE_BYTES: the trailer has a page of its own at the end of each slot (and slot B's
 # first page is the swap offset), so the image gets every other page and nothing is taken off for the trailer
-FW_MAX_IMAGE_SIZE_BYTES = (FW_SLOT_A_SIZE_PAGES - 1) * FLASH_PAGE_SIZE_BYTES # 50 KB
+FW_MAX_IMAGE_SIZE_BYTES = (FW_SLOT_A_SIZE_PAGES - 1) * FLASH_PAGE_SIZE_BYTES # 768 KB
 
 # Mirrors image_header_t in boot_core/Inc/image_format.h
 IMAGE_MAGIC = 0xB0FE673D
@@ -43,16 +43,45 @@ HANDSHAKE_STATUS_FAILED = 0x02
 HANDSHAKE_STATUS_REJECTED_INVALID = 0x03
 HANDSHAKE_STATUS_REJECTED_OLDER = 0x04
 # covers a new image that never handshakes: the 20 s IWDG, the revert swap back, then the old app's revert handshake
-HANDSHAKE_WAIT_S = 45.0
+HANDSHAKE_WAIT_S = 180.0 # H7 128K sector erases are ~2 s each and the swap does several per sector
 HANDSHAKE_RESULT_WAIT_S = 2.0
 
 CAN_EFF_FLAG = 0x80000000
 CAN_EFF_MASK = 0x1FFFFFFF
 CAN_FRAME_FMT = "=IB3x8s"
+CANFD_FRAME_FMT = "=IBBBB64s" # can_id, len, flags, res0, res1, data
+CANFD_BRS = 0x01
+CAN_RAW_FD_FRAMES = 5 # from linux/can/raw.h, not every Python build exposes socket.CAN_RAW_FD_FRAMES
 
 
 def handshake_ecu_id(ecu_id: int) -> int:
     return 0x1F000FFD | (ecu_id << 12)
+
+
+# TEMP benchmark results from the bootloader, mirrors boot_core/Inc/bench.h
+# one raw frame per field: [field_id, 0, 0, 0, value (u32 LE)]
+BENCH_TX_FIELDS = {0x01: "erase_us", 0x02: "erase_n", 0x03: "erase_avg_ns",
+                   0x04: "write_us", 0x05: "write_n", 0x06: "write_avg_ns", 0x07: "stack_tx_bytes"}
+BENCH_BOOT_FIELDS = {0x11: "hash_us", 0x12: "sig_us", 0x13: "swap_us", 0x14: "stack_boot_bytes"}
+
+
+def bench_ecu_id(ecu_id: int) -> int:
+    return 0x1F000FFC | (ecu_id << 12)
+
+
+def print_bench(bench: "HandshakeSocket") -> dict[str, int]:
+    """Prints every benchmark frame the bootloader sent since the socket was opened, returns {field name: value}"""
+    fields = {}
+    while (data := bench.recv(0.1)) is not None:
+        if len(data) == 8:
+            fields[data[0]] = struct.unpack_from("<I", data, 4)[0]
+    named = {}
+    for tag, names in (("BENCH_TX", BENCH_TX_FIELDS), ("BENCH_BOOT", BENCH_BOOT_FIELDS)):
+        values = {name: fields[field_id] for field_id, name in names.items() if field_id in fields}
+        named.update(values)
+        text = " ".join(f"{name}={value}" for name, value in values.items())
+        print(f"{tag} {text}" if values else f"{tag} not received")
+    return named
 
 
 def make_connection(interface: str) -> IsoTPSocketConnection:
@@ -61,14 +90,19 @@ def make_connection(interface: str) -> IsoTPSocketConnection:
     multi-frame 0x36 and times out at random"""
     tpsock = isotp.socket(timeout=0.1)
     tpsock.set_opts(optflag=isotp.socket.flags.WAIT_TX_DONE)
+    # CAN FD with bit rate switch, 64 byte frames to match CFG_ISOTP_CAN_DL in the bootloader (CFG_CAN_FD 1)
+    tpsock.set_ll_opts(mtu=isotp.socket.LinkLayerProtocol.CAN_FD, tx_dl=64, tx_flags=CANFD_BRS)
     return IsoTPSocketConnection(interface, isotp.Address(isotp.AddressingMode.Normal_29bits, rxid=RXID, txid=TXID), tpsock=tpsock)
 
 
 class HandshakeSocket:
-    """Raw SocketCAN socket that only sees one ECU's handshake frames"""
-    def __init__(self, interface: str, ecu_id: int):
+    """Raw SocketCAN socket that only sees frames with one CAN ID. Sends classic frames, receives both FD and classic
+    (the h7_test app handshakes in CAN FD)"""
+    def __init__(self, interface: str, can_id: int):
         self.sock = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
-        can_filter = struct.pack("=II", handshake_ecu_id(ecu_id) | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
+        # without this the kernel silently drops every FD frame on this socket
+        self.sock.setsockopt(socket.SOL_CAN_RAW, CAN_RAW_FD_FRAMES, 1)
+        can_filter = struct.pack("=II", can_id | CAN_EFF_FLAG, CAN_EFF_FLAG | CAN_EFF_MASK)
         self.sock.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, can_filter)
         self.sock.bind((interface,))
 
@@ -82,11 +116,15 @@ class HandshakeSocket:
         """Data of the next handshake frame from the ECU, None on timeout"""
         self.sock.settimeout(max(timeout, 0))
         try:
-            raw = self.sock.recv(struct.calcsize(CAN_FRAME_FMT))
+            raw = self.sock.recv(struct.calcsize(CANFD_FRAME_FMT))
         except (TimeoutError, BlockingIOError):
             return None
-        _, dlc, data = struct.unpack(CAN_FRAME_FMT, raw)
-        return data[:dlc]
+        # classic frames still arrive as the 16 byte struct can_frame
+        if len(raw) == struct.calcsize(CANFD_FRAME_FMT):
+            _, length, _, _, _, data = struct.unpack(CANFD_FRAME_FMT, raw)
+        else:
+            _, length, data = struct.unpack(CAN_FRAME_FMT, raw)
+        return data[:length]
 
 
 FLASH_FILL_BYTE = 0xAA
@@ -312,17 +350,20 @@ class TestCli:
         old_text = "no previous image" if old_version == "0.0.0" else f"version {old_version}"
 
         # open before the reset so the first handshake frame can't be missed
-        handshake = HandshakeSocket(self.interface, ecu_id)
+        handshake = HandshakeSocket(self.interface, handshake_ecu_id(ecu_id))
+        bench = HandshakeSocket(self.interface, bench_ecu_id(ecu_id))
         try:
             with self.lock:
                 self.client.ecu_reset(0x01)
             print(f"ECU is resetting to install the update, waiting up to {HANDSHAKE_WAIT_S:.0f} s for the handshake")
             self.confirm_update(handshake, ecu_id, new_version, old_text)
+            print_bench(bench)
         finally:
             handshake.close()
+            bench.close()
 
-    def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> None:
-        """Blocks on the test boot (or revert) handshake and reports whether the update stuck"""
+    def confirm_update(self, handshake: HandshakeSocket, ecu_id: int, new_version: str, old_text: str) -> str:
+        """Blocks on the test boot (or revert) handshake and reports whether the update stuck, returns a short result"""
         deadline = time.monotonic() + HANDSHAKE_WAIT_S
         data = None
         while time.monotonic() < deadline:
@@ -334,13 +375,13 @@ class TestCli:
                 reason = "failed verification" if data[0] == HANDSHAKE_STATUS_REJECTED_INVALID else "is older than the running image"
                 running = ".".join(str(part) for part in data[1:4])
                 print(f"Update rejected by the bootloader: {new_version} {reason}, ECU is still running version {running}")
-                return
+                return "rejected_invalid" if data[0] == HANDSHAKE_STATUS_REJECTED_INVALID else "rejected_older"
             if data[0] == HANDSHAKE_STATUS_WAITING:
                 break
             data = None
         if data is None:
             print(f"No handshake: the update was rejected or failed to boot, ECU should still be on {old_text}")
-            return
+            return "no_handshake"
 
         # a reverted app handshakes too, the only tell is that the version didn't change to the new one
         running = ".".join(str(part) for part in data[1:4])
@@ -360,12 +401,14 @@ class TestCli:
                 continue
             if reverted:
                 print(f"Update failed, ECU is running version {running}")
-            elif data[0] == HANDSHAKE_STATUS_CONFIRMED:
+                return "reverted"
+            if data[0] == HANDSHAKE_STATUS_CONFIRMED:
                 print(f"Handshake successful, ECU confirmed and is now running version {running}")
-            else:
-                print(f"ECU failed to confirm the image, it has rolled back to {old_text}")
-            return
+                return "confirmed"
+            print(f"ECU failed to confirm the image, it has rolled back to {old_text}")
+            return "confirm_failed"
         print(f"ECU never answered the confirm, it rolls back to {old_text} when its watchdog fires")
+        return "no_confirm_answer"
 
     def download(self, image: bytes) -> None:
         """0x34 / 0x36 / 0x37 of image into slot B"""
@@ -379,7 +422,10 @@ class TestCli:
         with self.lock:
             # address is ignored by the server, it always writes to slot B
             location = MemoryLocation(address=0, memorysize=size, address_format=32, memorysize_format=32)
+            # TEMP benchmark: transport time is 0x34 + (first 0x36 .. 0x37), the block size prompt is excluded
+            x34_start = time.perf_counter()
             response = self.client.request_download(location)
+            x34_s = time.perf_counter() - x34_start
         max_length = response.service_data.max_length
         print(f"Download accepted, server max block length = {max_length}")
 
@@ -390,7 +436,7 @@ class TestCli:
             return
 
         num_blocks = (size + block_size - 1) // block_size
-        start = time.monotonic()
+        start = time.perf_counter()
         seq_counter = 1
         for block_num, offset in enumerate(range(0, size, block_size), start=1):
             with self.lock:
@@ -402,7 +448,9 @@ class TestCli:
 
         with self.lock:
             self.client.request_transfer_exit()
-        print(f"Transfer complete, {size} bytes in {time.monotonic() - start:.1f} s")
+        transport_s = x34_s + time.perf_counter() - start
+        print(f"Transfer complete, {size} bytes in {transport_s:.1f} s")
+        print(f"BENCH transport_us={transport_s * 1e6:.0f} bytes={size} block_size={block_size}")
 
     def request_download(self) -> None:
         size = prompt_int("Number of bytes", FLASH_DEFAULT_SIZE_BYTES)

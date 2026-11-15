@@ -8,6 +8,7 @@
 #include "image_handler.h"
 #include "mcu_interface/flash_driver.h"
 #include "flash_writer.h"
+#include "bench.h"
 
 static download_state_t curr_state = DOWNLOAD_IDLE;
 static uint32_t num_bytes_to_download = 0;
@@ -65,6 +66,8 @@ sr_errno_t x34_download_start_handler(const uint8_t* rx_buf, uint32_t rx_length,
         // if isotp is cooked, abort
         return result;
     }
+
+    bench_transport_reset();
 
     // clear any update marker left by an earlier download
     if (erase_trailer(SLOT_B) != SR_OK) {

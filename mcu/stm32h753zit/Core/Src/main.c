@@ -22,6 +22,7 @@
 #include "iwdg.h"
 #include "rng.h"
 #include "rtc.h"
+#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/

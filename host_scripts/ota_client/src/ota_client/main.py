@@ -46,7 +46,7 @@ def configure(auth_key: Ed25519PrivateKey) -> ClientConfig:
     # so bus/host latency can never fail a request the bootloader answered in time
     config["use_server_timing"] = False
     config["p2_timeout"] = 1.0 # 1 s
-    config["p2_star_timeout"] = 5000 / 1000 # 5000 ms
+    config["p2_star_timeout"] = 30.0 # 30 s, H7 128K sector erases are ~2 s each and 0x34 does two
     config["data_identifiers"] = {
         0xF180: ">BBB", # Bootloader version
         0xF181: ">BBB", # App version
