@@ -95,6 +95,7 @@ To add support for a new MCU, create `mcu/<name>/` and provide:
         - `sr_flash_write()`: write one `FLASH_WRITE_GRANULARITY_BYTES` chunk.
         - `sr_flash_erase_page()`: erase pages in a bank.
         - `sr_flash_get_page_info()` / `sr_flash_get_page_address()`: convert between an address and a bank + page.
+        - `sr_flash_bl_wrp()`: write protect the bootloader's pages if not already protected. If fail, just return to boot without protection. If no write protection, just stub it.
     - `sys_misc.h`
         - `jump_to_app()`: disable interrupts, stop SysTick, clear the NVIC, set `VTOR`, then load the app's MSP, **re-enable interrupts** and branch to its reset handler without touching the stack in between (see `branch_to()` in `sys_misc.c`).
         - `sr_counter_start()` / `sr_cyccnt()` / `sr_micros_since()`: cycle counter for ISO-TP timing.

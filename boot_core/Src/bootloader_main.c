@@ -6,6 +6,7 @@
 #include "mcu_interface/sys_misc.h"
 #include "mcu_interface/led_blink.h"
 #include "mcu_interface/can_driver.h"
+#include "mcu_interface/flash_driver.h"
 #include "uds/uds.h"
 #include "image_handler.h"
 #include "common_config/boot_config.h"
@@ -73,7 +74,8 @@ int main(void) {
     if (sr_peripherals_init() != SR_OK) {
         sr_reset_mcu();
     }
-
+    
+    sr_flash_bl_wrp();
     sr_led_blink();
 
     uint8_t boot_allowed = 1;

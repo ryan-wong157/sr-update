@@ -61,4 +61,9 @@ sr_errno_t sr_flash_get_page_info(uint32_t address, uint32_t* bank, uint32_t* pa
  */
 sr_errno_t sr_flash_get_page_address(uint32_t bank, uint32_t page, uint32_t* address);
 
+
+/**
+ * @brief write protects bootloader region if not already done 
+ */
+void sr_flash_bl_wrp(void);
 #endif

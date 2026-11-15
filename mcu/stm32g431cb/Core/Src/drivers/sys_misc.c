@@ -101,3 +101,34 @@ void sr_iwdg_start(uint32_t timeout_ms) {
     iwdg.Init.Reload = reload;
     HAL_IWDG_Init(&iwdg);
 }
+
+void sr_flash_bl_wrp(void) {
+    FLASH_OBProgramInitTypeDef ob = {0};
+    ob.WRPArea = OB_WRPAREA_BANK1_AREAA;
+    HAL_FLASHEx_OBGetConfig(&ob);
+
+    if (ob.WRPStartOffset == 0 && ob.WRPEndOffset == BOOTLOADER_SIZE_PAGES - 1) {
+        return;
+    }
+
+    ob.OptionType = OPTIONBYTE_WRP;
+    ob.WRPArea = OB_WRPAREA_BANK1_AREAA;
+    ob.WRPStartOffset = 0;
+    ob.WRPEndOffset = BOOTLOADER_SIZE_PAGES - 1;
+
+    if (HAL_FLASH_Unlock() != HAL_OK) return;
+    if (HAL_FLASH_OB_Unlock() != HAL_OK) {
+        HAL_FLASH_Lock();
+        return;
+    }
+
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+
+    if (HAL_FLASHEx_OBProgram(&ob) == HAL_OK) {
+        // reset
+        HAL_FLASH_OB_Launch();
+    }
+
+    HAL_FLASH_OB_Lock();
+    HAL_FLASH_Lock();
+}
